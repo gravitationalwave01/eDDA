@@ -195,10 +195,11 @@
       JZMIN1=NINT(-0.5_WP*ZS1/DX(3)-X0(3)+DELTA)
       JZMAX1=NINT(0.5_WP*ZS1/DX(3)-X0(3)-DELTA)
 !*** diagnostic
-      write(0,*)'ys1=',ys1,' x0(2)=',x0(2)
-      write(0,*)'jymin1=',jymin1,' jymax1=',jymax1
-      write(0,*)'zs1=',zs1,' x0(3)=',x0(3)
-      write(0,*)'jzmin1=',jzmin1,' jzmax1=',jzmax1
+!      write(0,*)'tarrctblk3 ckpt 1'
+!      write(0,*)'ys1=',ys1,' x0(2)=',x0(2)
+!      write(0,*)'jymin1=',jymin1,' jymax1=',jymax1
+!      write(0,*)'zs1=',zs1,' x0(3)=',x0(3)
+!      write(0,*)'jzmin1=',jzmin1,' jzmax1=',jzmax1
 !***
       NY1=JYMAX1-JYMIN1+1
       NZ1=JZMAX1-JZMIN1+1

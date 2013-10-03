@@ -82,7 +82,7 @@
 !***********************************************************************
 
 !*** diagnostic
-!      write(0,*)'entered evala...'
+!      write(0,*)'evala ckpt 0'
 !***
 
       DO J1=1,NAT
@@ -100,9 +100,27 @@
          CXAOFF(J1)=(CXALOF(J2)*CXALOF(J3)-CXALPH(J1)*CXALOF(J1))/DENOM
          CXAOFF(J2)=(CXALOF(J3)*CXALOF(J1)-CXALPH(J2)*CXALOF(J2))/DENOM
          CXAOFF(J3)=(CXALOF(J1)*CXALOF(J2)-CXALPH(J3)*CXALOF(J3))/DENOM
+!*** diagnostic
+!         if(j1==133.or.j1==134)then
+!            write(0,*)'evala ckpt 1:'
+!            write(0,*)'       j1=',j1
+!            write(0,*)'       j2=',j2
+!            write(0,*)'       j3=',j3
+!            write(0,*)'       cx1=',cx1
+!            write(0,*)'       cx2=',cx2
+!            write(0,*)'       cx3=',cx3
+!            write(0,*)'     denom=',denom
+!            write(0,*)'cxadia(j1)=',cxadia(j1)
+!            write(0,*)'cxadia(j2)=',cxadia(j2)
+!            write(0,*)'cxadia(j3)=',cxadia(j3)
+!            write(0,*)'cxaoff(j1)=',cxaoff(j1)
+!            write(0,*)'cxaoff(j2)=',cxaoff(j2)
+!            write(0,*)'cxaoff(j3)=',cxaoff(j3)
+!         endif
+!***
       ENDDO
 !*** diagnostic
-!      write(0,*)'in evala, about to return'
+!      write(0,*)'evala ckpt 99 : about to return'
 !***
       RETURN
 

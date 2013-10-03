@@ -1,8 +1,8 @@
-    SUBROUTINE SCAT(AK,AKS,DX,EM1,EM2,E02,ETASCA,CMDTRQ,CBKSCA,CSCA,CSCAG,    &
-                    CSCAG2,CTRQIN,CTRQSC,CXE,CXE00,CXF1L,CXF2L,CXP,CXSCR1,    &
-                    CXSCR2,CXSCR3,CXSCR4,MXN3,MXNAT,MXSCA,MYID,JPBC,NAT,NAT3, &
-                    NAVG,NDIR,SCRRS1,SCRRS2,IXYZ,X0)
-!-------------------------------- v4 -----------------------------------------
+    SUBROUTINE SCAT(AK_TF,AKS_TF,DX,EM1_TF,EM2_TF,E02,ETASCA,CMDTRQ,CBKSCA, &
+                    CSCA,CSCAG,CSCAG2,CTRQIN,CTRQSC,CXE_TF,CXE01_TF,CXF1L,  &
+                    CXF2L,CXP_TF,CXSCR1,CXSCR2,CXSCR3,CXSCR4,MXN3,MXNAT,    &
+                    MXSCA,MYID,JPBC,NAT,NAT3,NAVG,NDIR,SCRRS1,SCRRS2,IXYZ,X0)
+!-------------------------------- v5 -----------------------------------------
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
@@ -14,33 +14,34 @@
       INTEGER ::   &
          IXYZ(NAT,3)
       COMPLEX(WP) ::     &
-         CXE(NAT,3),     &
-         CXE00(3),       &
+         CXE_TF(NAT,3),  &
+         CXE01_TF(3),    &
          CXF1L(MXSCA),   &
          CXF2L(MXSCA),   &
-         CXP(NAT,3),     &
+         CXP_TF(NAT,3),  &
          CXSCR1(MXN3),   &
          CXSCR2(MXN3),   &
          CXSCR3(MXN3),   &
          CXSCR4(MXNAT,3)
-      REAL(WP) ::        &
-         AK(3),          &
-         AKS(3,MXSCA),   &
-         CSCAG(3),       &
-         CTRQIN(3),      &
-         CTRQSC(3),      &
-         DX(3),          &
-         EM1(3,MXSCA),   &
-         EM2(3,MXSCA),   &
-         SCRRS1(NAT,3),  &
-         SCRRS2(MXNAT),  &
+      REAL(WP) ::         &
+         AK_TF(3),        &
+         AKS_TF(3,MXSCA), &
+         CSCAG(3),        &
+         CTRQIN(3),       &
+         CTRQSC(3),       &
+         DX(3),           &
+         EM1_TF(3,MXSCA), &
+         EM2_TF(3,MXSCA), &
+         SCRRS1(NAT,3),   &
+         SCRRS2(MXNAT),   &
          X0(3)
 
 ! Local variables:
 
       CHARACTER :: CMSGNM*70
       COMPLEX(WP) :: CXI,CXSCL1,CXSCL2,CXSCL3,CXZERO
-      COMPLEX(WP) :: CXSCL1_L,CXSCL2_L,CXSCL3_L,CXF1L_L,CXF2L_L,CXTRM_K  !Art for local private vars
+      COMPLEX(WP) :: CXSCL1_L,CXSCL2_L,CXSCL3_L,CXF1L_L,CXF2L_L, &
+                     CXTRM_K  !Art for local private vars
       REAL(WP) :: AFAC,AK2,AK3,AKK,COSPHI,COSTH,DOMEGA,DPHI,EINC,ES2,PI,PHI, &
                   RRR,SI,SINPHI,SINTH,TERM,THETA,THETA0,THETAL,THETAU,W,X
       INTEGER :: ICOSTH,IPHI,J,K,ND,NPHI,NTHETA
@@ -72,23 +73,23 @@
 !           (e.g., the Target Frame)
 
 ! Given:
-!     AK(1-3) = (kx,ky,kz)*d = where (kx,ky,kz)=incident k vector in TF
+!     AK_TF(1-3) = (kx,ky,kz)*d = where (kx,ky,kz)=incident k vector in TF
 !               d = (dx*dy*dz)**(1/3) = effective lattice spacing
-!     AKS(3,MXSCA)=scattered k vectors in TF
+!     AKS_TF(3,MXSCA)=scattered k vectors in TF
 !     DX(1-3) = (dx,dy,dz)/d where dx,dy,dz=x,y,z lattice spacing
 !     CMDTRQ = 'DOTORQ' to calculate torques
 !            = 'NOTORQ' to skip calculation of torques
-!     EM1(3,MXSCA)=pol.vector 1 in TF for each scattering direction
-!     EM2(3,MXSCA)=pol.vector 2 in TF for each scattering direction
+!     EM1_TF(3,MXSCA)=pol.vector 1 in TF for each scattering direction
+!     EM2_TF(3,MXSCA)=pol.vector 2 in TF for each scattering direction
 !     E02 = |E_0|^2 , where E_0 = incident complex E field
 !     NAT = number of dipoles
 !     NAT3 = 3*NAT
 !     IXYZ(NAT,1-3) = [x-X0(1)]/d, [y-X0(2)]/d, [z-X0(3)]/d (integers) 
 !                     for dipoles 1-NAT
 !     X0(1-3) = location/d in TF of lattice site with IXYZ=(0,0,0)
-!     CXE(1-NAT,1-3) = components in TF of E field at each dipole at t=0
-!     CXE00(1-3) = (complex) reference polarization vector in TF
-!     CXP(1-NAT,1-3) = components in TF of polarization of each dipole at t=0
+!     CXE_TF(1-NAT,1-3) = components in TF of E field at each dipole at t=0
+!     CXE01_TF(1-3) = (complex) reference polarization vector in TF
+!     CXP_TF(1-NAT,1-3) = components in TF of polarization of each dipole at t=0
 !     NDIR = number of directions at which scattering matrix elements
 !            are to be computed
 !     JPBC = 0 for finite target
@@ -224,12 +225,21 @@
 !                    #endif
 !                 which will be compiled only if compiled with
 !                 preprocessor flag -fpp -Dscat_omp 
-! 08.07.01 (BTD): this is a copy of scat_asl2.f90 as of 08.06.20
+! 08.07.01 (BTD): v3: this is a copy of scat_asl2.f90 as of 08.06.20
 ! 08.08.06 (BTD): change #ifdef debug -> #ifdef openmp
 !                 so that all omp directives are enabled by single
 !                 preprocessor flag
+! 11.11.15 (BTD): v5: change notation
+!                 AK    -> AK_TF
+!                 AKS   -> AKS_TF
+!                 CXE   -> CXE_TF
+!                 CXE00 -> CXE01_TF
+!                 CXP   -> CXP_TF
+!                 EM1   -> EM1_TF
+!                 EM2   -> EM2_TF
+! 12.04.27 (BTD): modifications to omp directives
 ! end history
-! Copyright (C) 1993,1994,1995,1997,1998,2003,2007,2008
+! Copyright (C) 1993,1994,1995,1997,1998,2003,2007,2008,2011,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -240,7 +250,7 @@
       CXI=(0._WP,1._WP)
       PI=4._WP*ATAN(1._WP)
 
-      AK2=AK(1)*AK(1)+AK(2)*AK(2)+AK(3)*AK(3)
+      AK2=AK_TF(1)*AK_TF(1)+AK_TF(2)*AK_TF(2)+AK_TF(3)*AK_TF(3)
       AKK=SQRT(AK2)
       AK3=AKK*AK2
 
@@ -294,12 +304,12 @@
 ! etasca = 1 appears to work well.
 ! Use smaller value of ETASCA for improved accuracy
 
-! Incident k vector AK defines one axis (for spherical integration)
-! Use (real part of) reference polarization vector CXE00 to define
+! Incident k vector AK_TF defines one axis (for spherical integration)
+! Use (real part of) reference polarization vector CXE01_TF to define
 ! second coordinate axis.
 ! Construct third coordinate axis by taking cross product of first
 ! two axes.
-! AKS1, AKS2 = vectors of length equal to AK lying along second and
+! AKS1, AKS2 = vectors of length equal to AK_TF lying along second and
 !              third coordinate axes.
 
 !*** diagnostic
@@ -307,21 +317,22 @@
 !***
       IF(JPBC==0)THEN
 
-         AKS1(1)=REAL(CXE00(1))
-         AKS1(2)=REAL(CXE00(2))
-         AKS1(3)=REAL(CXE00(3))
+         AKS1(1)=REAL(CXE01_TF(1))
+         AKS1(2)=REAL(CXE01_TF(2))
+         AKS1(3)=REAL(CXE01_TF(3))
 
 ! EINC = magnitude of (real part of) reference electric field
 
          EINC=SQRT(AKS1(1)**2+AKS1(2)**2+AKS1(3)**2)
-         IF(EINC<=0._WP)CALL ERRMSG('FATAL','SCAT','CXE00 IS PURE IMAGINARY!')
+         IF(EINC<=0._WP)CALL ERRMSG('FATAL','SCAT',              &
+                                    'CXE01_TF IS PURE IMAGINARY!')
          RRR=AKK/EINC
          AKS1(1)=RRR*AKS1(1)
          AKS1(2)=RRR*AKS1(2)
          AKS1(3)=RRR*AKS1(3)
-         AKS2(1)=(AK(2)*AKS1(3)-AK(3)*AKS1(2))/AKK
-         AKS2(2)=(AK(3)*AKS1(1)-AK(1)*AKS1(3))/AKK
-         AKS2(3)=(AK(1)*AKS1(2)-AK(2)*AKS1(1))/AKK
+         AKS2(1)=(AK_TF(2)*AKS1(3)-AK_TF(3)*AKS1(2))/AKK
+         AKS2(2)=(AK_TF(3)*AKS1(1)-AK_TF(1)*AKS1(3))/AKK
+         AKS2(3)=(AK_TF(1)*AKS1(2)-AK_TF(2)*AKS1(1))/AKK
 
 !*** diagnostic
 !      write(0,*)'scat ckpt 2'
@@ -356,73 +367,98 @@
 ! CXSCR4(J,1-3) = p_j cross r_j
 
 #ifdef openmp
-!$omp parallel 
-#endif
-            DO K=1,3
-#ifdef openmp
-!$omp single
+!$OMP PARALLEL 
 #endif
 
-               XYZCM(K)=0._WP
+            DO K=1,3
+
 #ifdef openmp
-!$omp end single
-!$omp do reduction(+: XYZCM)
+!$OMP SINGLE
 #endif
+
+
+               XYZCM(K)=0._WP
+
+#ifdef openmp
+!$OMP END SINGLE
+!$OMP DO                  &
+!$OMP    PRIVATE(J)       &
+!$OMP    REDUCTION(+:XYZCM)
+#endif
+
                DO J=1,NAT
                   XYZCM(K)=XYZCM(K)+(REAL(IXYZ(J,K),KIND=WP)+X0(K))*DX(K)
                ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
+
                XYZCM(K)=XYZCM(K)/REAL(NAT,KIND=WP)
             ENDDO
             DO K=1,3
+
 #ifdef openmp
-!$omp do
+!$OMP DO          &
+!$OMP&   PRIVATE(J)
 #endif
+
                DO J=1,NAT
                   SCRRS1(J,K)=(REAL(IXYZ(J,K),KIND=WP)+X0(K))*DX(K)-XYZCM(K)
                ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
+
             ENDDO
+
 #ifdef openmp
-!$omp do private(k)
+!$OMP DO            &
+!$OMP&   PRIVATE(J,K)
 #endif
             DO J=1,NAT
                CXSCR3(J)=CXZERO
                DO K=1,3
-                  CXSCR3(J)=CXSCR3(J)+SCRRS1(J,K)*CXP(J,K)
+                  CXSCR3(J)=CXSCR3(J)+SCRRS1(J,K)*CXP_TF(J,K)
                ENDDO
             ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp do
+!$OMP END DO
+!$OMP DO          &
+!$OMP&   PRIVATE(J)
 #endif
+
             DO J=1,NAT
-               CXSCR4(J,1)=CXP(J,2)*SCRRS1(J,3)-CXP(J,3)*SCRRS1(J,2)
-               CXSCR4(J,2)=CXP(J,3)*SCRRS1(J,1)-CXP(J,1)*SCRRS1(J,3)
-               CXSCR4(J,3)=CXP(J,1)*SCRRS1(J,2)-CXP(J,2)*SCRRS1(J,1)
+               CXSCR4(J,1)=CXP_TF(J,2)*SCRRS1(J,3)-CXP_TF(J,3)*SCRRS1(J,2)
+               CXSCR4(J,2)=CXP_TF(J,3)*SCRRS1(J,1)-CXP_TF(J,1)*SCRRS1(J,3)
+               CXSCR4(J,3)=CXP_TF(J,1)*SCRRS1(J,2)-CXP_TF(J,2)*SCRRS1(J,1)
             ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp end parallel
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
 !***********************************************************************
 
-         ELSE
+         ELSE   ! NOTORQ case
 !*** diagnostic
 !           write(0,*)'scat ckpt 3, nat, mxnat = ',nat,mxnat
 !***
+
 #ifdef openmp
-!$omp parallel
+!$OMP PARALLEL
 #endif
+
             DO K=1,3
+
 #ifdef openmp
-!$omp do
+!$OMP DO          &
+!$OMP&   PRIVATE(J)
 #endif
+
                DO J=1,NAT
 !*** diagnostic
 !                  write(0,*)'scat ckpt 3.5 myid=',myid,' J,K=',J,K, &
@@ -434,14 +470,18 @@
 !                  write(0,*)'scat ckpt 3.6'
 !***
                ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
+
             ENDDO
+
 #ifdef openmp
-!$omp end parallel
+!$OMP END PARALLEL
 #endif
-         ENDIF !--- end IF(CMDTRQ=='DOTORQ')
+
+         ENDIF !--- end IF(CMDTRQ=='DOTORQ') elseif
 
 ! Proceed to sum over scattering angles:
 !*** diagnostic
@@ -505,7 +545,7 @@
 ! Initialize CXES(1-3) = scattered electric field
 
                DO K=1,3
-                  AKS0(K)=COSTH*AK(K)+SINTH*(COSPHI*AKS1(K)+SINPHI*AKS2(K))
+                  AKS0(K)=COSTH*AK_TF(K)+SINTH*(COSPHI*AKS1(K)+SINPHI*AKS2(K))
                   CXES(K)=CXZERO
                ENDDO
 
@@ -528,19 +568,24 @@
 ! computing phase factors exp[-i k_s dot r_j]
 
 #ifdef openmp
-!$omp parallel private(cxes_l,cxscl2_l)
+!$OMP PARALLEL                  & 
+!$OMP&   PRIVATE(CXES_L,CXSCL2_L)
 #endif
-              cxes_l = cxzero  !Art 
+
+              CXES_L=CXZERO
+
 #ifdef openmp
-!$omp do private(k)
+!$OMP DO          &
+!$OMP& PRIVATE(J,K)
 #endif
+
                DO J=1,NAT
 
 ! CXSCR1(J) = nhat dot p(j)
 
                   CXSCR1(J)=CXZERO
                   DO K=1,3
-                     CXSCR1(J)=CXSCR1(J)+AKSN(K)*CXP(J,K)
+                     CXSCR1(J)=CXSCR1(J)+AKSN(K)*CXP_TF(J,K)
                   ENDDO
 
 ! SCRRS2(J) = nhat dot r(j)
@@ -557,23 +602,31 @@
 ! CXES(1-3) = sum_j[p_j-nhat(nhat dot p_j)]exp[-ik_s dot x_j]
 
                   DO K=1,3
-!Art                     CXES(K)=CXES(K)+(CXP(J,K)-AKSN(K)*CXSCR1(J))*CXSCR2(J)
-                     CXES_l(K)=CXES_l(K)+(CXP(J,K)-AKSN(K)*CXSCR1(J))*CXSCR2(J)
+!Art                     CXES(K)=CXES(K)+                                 &
+!                                 (CXP_TF(J,K)-AKSN(K)*CXSCR1(J))*CXSCR2(J)
+                     CXES_L(K)=CXES_L(K)+                              &
+                               (CXP_TF(J,K)-AKSN(K)*CXSCR1(J))*CXSCR2(J)
                   ENDDO
                ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp atomic
+!$OMP END DO
+!$OMP ATOMIC
 #endif
-               cxes(1) = cxes(1) + cxes_l(1)
+
+               CXES(1)=CXES(1)+CXES_L(1)
+
 #ifdef openmp
-!$omp atomic
+!$OMP ATOMIC
 #endif
-               cxes(2) = cxes(2) + cxes_l(2)
+
+               CXES(2)=CXES(2)+CXES_L(2)
+
 #ifdef openmp
-!$omp atomic
+!$OMP ATOMIC
 #endif
-               cxes(3) = cxes(3) + cxes_l(3)
+
+               CXES(3)=CXES(3)+CXES_L(3)
 
                IF(CMDTRQ=='DOTORQ')THEN
 
@@ -598,33 +651,45 @@
 ! CXSCR4(J,K)=p_j cross r_j
 
 #ifdef openmp
-!$omp single
+!$OMP SINGLE
 #endif
+
                   CXSCL1=CXZERO
+
 #ifdef openmp
-!$omp end single
+!$OMP END SINGLE
 #endif
+
 
 !Art                  DO K=1,3
 !Art                     CXTRM(K)=CXZERO
 !Art                  ENDDO
+
                   DO K=1,3
+
 #ifdef openmp
-!$omp single
+!$OMP SINGLE
 #endif
+
                      CXTRM_K=CXZERO
+
 #ifdef openmp
-!$omp end single
-!$omp do reduction(+: cxtrm_k)
+!$OMP END SINGLE
+!$OMP DO                    &     
+!$OMP&   PRIVATE(J)         &
+!$OMP&   REDUCTION(+:CXTRM_K)
 #endif
+
                      DO J=1,NAT
 !Art                        CXTRM(K)=CXTRM(K)+CXSCR2(J)*CXSCR4(J,K)
                         CXTRM_K=CXTRM_K+CXSCR2(J)*CXSCR4(J,K)
                      ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp atomic
+!$OMP END DO
+!$OMP ATOMIC
 #endif
+
 !Art                     CXSCL1=CXSCL1+AKSN(K)*CXTRM(K)
                      CXSCL1=CXSCL1+AKSN(K)*CXTRM_K
                   ENDDO
@@ -639,20 +704,25 @@
 ! SCRRS2(J) = nhat dot r(j)
 
 #ifdef openmp
-!$omp single
+!$OMP SINGLE
 #endif
+
                   CXSCL2=CXZERO
                   CXSCL3=2._WP*CXI/AKK
+
 #ifdef openmp
-!$omp end single
-!$omp do reduction (+: CXSCL2)
+!$OMP END SINGLE
+!$OMP DO                    &
+!&OMP    PRIVATE(J)         &       
+!$OMP&   REDUCTION (+:CXSCL2)
 #endif
+
                   DO J=1,NAT
-                     CXSCL2=CXSCL2+CXSCR2(J)*                    &
-                              (CXSCR3(J)-CXSCR1(J)*(SCRRS2(J)+CXSCL3))
+                     CXSCL2=CXSCL2+CXSCR2(J)*                      &
+                            (CXSCR3(J)-CXSCR1(J)*(SCRRS2(J)+CXSCL3))
                   ENDDO
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
 
 ! Note following notational correspondence:
@@ -666,7 +736,7 @@
 !***********************************************************************
                ENDIF
 #ifdef openmp
-!$omp end parallel
+!$OMP END PARALLEL
 #endif
 
 ! Have completed computation of vector CXES(1-3) and terms to calculate
@@ -732,7 +802,8 @@
 ! Note that the following computation introduces an additional factor
 ! of |k|.
 
-            CTRQSC(1)=AK(1)*CTRQSCTF(1)+AK(2)*CTRQSCTF(2)+AK(3)*CTRQSCTF(3)
+            CTRQSC(1)=AK_TF(1)*CTRQSCTF(1)+AK_TF(2)*CTRQSCTF(2)+ &
+                      AK_TF(3)*CTRQSCTF(3)
             CTRQSC(2)=AKS1(1)*CTRQSCTF(1)+AKS1(2)*CTRQSCTF(2) + &
                       AKS1(3)*CTRQSCTF(3)
             CTRQSC(3)=AKS2(1)*CTRQSCTF(1)+AKS2(2)*CTRQSCTF(2) + &
@@ -748,23 +819,36 @@
 ! CXSCR1(J)=conjg(p_j) dot E_0j at t=0
 
 #ifdef openmp
-!$omp parallel do private(k)
+!$OMP PARALLEL 
+!$OMP DO            & 
+!$OMP&   PRIVATE(J,K)
 #endif
+
             DO J=1,NAT
                CXSCR1(J)=CXZERO
                DO K=1,3
-                  CXSCR1(J)=CXSCR1(J)+CONJG(CXP(J,K))*CXE(J,K)
+                  CXSCR1(J)=CXSCR1(J)+CONJG(CXP_TF(J,K))*CXE_TF(J,K)
                ENDDO
             ENDDO
+
 #ifdef openmp
-!$omp end parallel do
-!$omp single
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
+
+#ifdef openmp
+!$OMP SINGLE
+#endif
+
+! 12.04.28 (BTD) I cannot see what is accomplished by this
+!                isolated OMP SINGLE section
+
             CXSCL1=CXZERO
             CXSCL2=CXZERO
             CXSCL3=CXZERO
+
 #ifdef openmp
-!$omp end single
+!$OMP END SINGLE
 #endif
 
 ! Compute CXSCL1,CXSCL2,CXSCL3=components of the torque due to
@@ -774,30 +858,39 @@
 ! 95.07.21 (BTD): corrected sign mistake (+CXI -> -CXI)
 ! 95.07.24 (BTD): changed def. of CXSCR1 to agree with paper,
 !                 changed calc. of CXSCLn to more closely mirror paper,
-!                 and changed AKS0 to AK
+!                 and changed AKS0 to AK_TF
 
 #ifdef openmp
-!$omp parallel do reduction(+: CXSCL1,CXSCL2,CXSCL3)
+!$OMP PARALLEL 
+!$OMP DO                                 &
+!$OMP&   PRIVATE(J)                      &
+!$OMP&   REDUCTION(+:CXSCL1,CXSCL2,CXSCL3)
 #endif
             DO J=1,NAT
-               CXSCL1=CXSCL1+CONJG(CXP(J,2))*CXE(J,3)-                    &
-                        CONJG(CXP(J,3))*CXE(J,2)-                         &
-                        CXI*(AK(2)*SCRRS1(J,3)-AK(3)*SCRRS1(J,2))*CXSCR1(J)
-               CXSCL2=CXSCL2+CONJG(CXP(J,3))*CXE(J,1)-                    &
-                        CONJG(CXP(J,1))*CXE(J,3)-                         &
-                        CXI*(AK(3)*SCRRS1(J,1)-AK(1)*SCRRS1(J,3))*CXSCR1(J)
-               CXSCL3=CXSCL3+CONJG(CXP(J,1))*CXE(J,2)-                    &
-                        CONJG(CXP(J,2))*CXE(J,1)-                         &
-                        CXI*(AK(1)*SCRRS1(J,2)-AK(2)*SCRRS1(J,1))*CXSCR1(J)
+               CXSCL1=CXSCL1+CONJG(CXP_TF(J,2))*CXE_TF(J,3)- &
+                         CONJG(CXP_TF(J,3))*CXE_TF(J,2)-     &
+                         CXI*(AK_TF(2)*SCRRS1(J,3)-          &
+                         AK_TF(3)*SCRRS1(J,2))*CXSCR1(J)
+               CXSCL2=CXSCL2+CONJG(CXP_TF(J,3))*CXE_TF(J,1)- &
+                         CONJG(CXP_TF(J,1))*CXE_TF(J,3)-     &
+                         CXI*(AK_TF(3)*SCRRS1(J,1)-          &
+                         AK_TF(1)*SCRRS1(J,3))*CXSCR1(J)
+               CXSCL3=CXSCL3+CONJG(CXP_TF(J,1))*CXE_TF(J,2)- &
+                         CONJG(CXP_TF(J,2))*CXE_TF(J,1)-     &
+                         CXI*(AK_TF(1)*SCRRS1(J,2)-          &
+                         AK_TF(2)*SCRRS1(J,1))*CXSCR1(J)
             ENDDO
+
 #ifdef openmp
-!$omp end parallel do
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
 ! Compute CTRQIN(1-3)=2*components of torque due to incident E and B
 ! fields (in lab frame), expressed as a cross section:
 
-            CTRQIN(1)=AK(1)*REAL(CXSCL1)+AK(2)*REAL(CXSCL2)+AK(3)*REAL(CXSCL3)
+            CTRQIN(1)=AK_TF(1)*REAL(CXSCL1)+AK_TF(2)*REAL(CXSCL2)+ &
+                      AK_TF(3)*REAL(CXSCL3)
             CTRQIN(2)=AKS1(1)*REAL(CXSCL1)+AKS1(2)*REAL(CXSCL2)+ &
                       AKS1(3)*REAL(CXSCL3)
             CTRQIN(3)=AKS2(1)*REAL(CXSCL1)+AKS2(2)*REAL(CXSCL2)+ &
@@ -851,33 +944,40 @@
       DO ND=1,NDIR
          CXF1L(ND)=CXZERO
          CXF2L(ND)=CXZERO
+
 #ifdef openmp
-!$OMP parallel 
-!$omp single
+!$OMP PARALLEL 
+!$OMP SINGLE
 #endif
-         cxf1l_l = cxzero
-         cxf2l_l = cxzero
+
+         CXF1L_L=CXZERO
+         CXF2L_L=CXZERO
+
 #ifdef openmp
-!$omp end single
-!$OMP do private (k) reduction(+: cxf1l_l, cxf2l_l)
+!$OMP END SINGLE
+!$OMP DO                              &
+!$OMP&   PRIVATE(K)                   &
+!$OMP&   REDUCTION(+: CXF1L_L, CXF2L_L)
 #endif
+
          DO J=1,NAT
             CXSCR2(J)=CXZERO
             CXSCR3(J)=CXZERO
-            CXSCR1(J)=EXP(-CXI*(                                         &
-                      AKS(1,ND)*(REAL(IXYZ(J,1),KIND=WP)+X0(1))*DX(1)+   &
-                      AKS(2,ND)*(REAL(IXYZ(J,2),KIND=WP)+X0(2))*DX(2)+   &
-                      AKS(3,ND)*(REAL(IXYZ(J,3),KIND=WP)+X0(3))*DX(3)))
+            CXSCR1(J)=EXP(-CXI*(                                          &
+                      AKS_TF(1,ND)*(REAL(IXYZ(J,1),KIND=WP)+X0(1))*DX(1)+ &
+                      AKS_TF(2,ND)*(REAL(IXYZ(J,2),KIND=WP)+X0(2))*DX(2)+ &
+                      AKS_TF(3,ND)*(REAL(IXYZ(J,3),KIND=WP)+X0(3))*DX(3)))
             DO K=1,3
-               CXSCR2(J)=CXSCR2(J)+CXP(J,K)*EM1(K,ND)
-               CXSCR3(J)=CXSCR3(J)+CXP(J,K)*EM2(K,ND)
+               CXSCR2(J)=CXSCR2(J)+CXP_TF(J,K)*EM1_TF(K,ND)
+               CXSCR3(J)=CXSCR3(J)+CXP_TF(J,K)*EM2_TF(K,ND)
             ENDDO
             CXF1L_L=CXF1L_L+CXSCR2(J)*CXSCR1(J)
             CXF2L_L=CXF2L_L+CXSCR3(J)*CXSCR1(J)
          ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp end parallel
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
 !*** diagnostic
@@ -893,19 +993,16 @@
 !         enddo
 !***
 !Art         DO J=1,NAT
-!Art            CXSCR1(J)=EXP(-CXI*(                                         &
-!Art                      AKS(1,ND)*(REAL(IXYZ(J,1),KIND=WP)+X0(1))*DX(1)+   &
-!Art                      AKS(2,ND)*(REAL(IXYZ(J,2),KIND=WP)+X0(2))*DX(2)+   &
-!Art                      AKS(3,ND)*(REAL(IXYZ(J,3),KIND=WP)+X0(3))*DX(3)))
+!Art            CXSCR1(J)=EXP(-CXI*(                                          &
+!Art                      AKS_TF(1,ND)*(REAL(IXYZ(J,1),KIND=WP)+X0(1))*DX(1)+ &
+!Art                      AKS_TF(2,ND)*(REAL(IXYZ(J,2),KIND=WP)+X0(2))*DX(2)+ &
+!Art                      AKS_TF(3,ND)*(REAL(IXYZ(J,3),KIND=WP)+X0(3))*DX(3)))
 !Art            CXF1L(ND)=CXF1L(ND)+CXSCR2(J)*CXSCR1(J)
 !Art            CXF2L(ND)=CXF2L(ND)+CXSCR3(J)*CXSCR1(J)
 !Art            CXF1L_L=CXF1L_L+CXSCR2(J)*CXSCR1(J)
 !Art            CXF2L_L=CXF2L_L+CXSCR3(J)*CXSCR1(J)
 !Art         ENDDO
 !Art!$omp end  do
-         CXF1L(ND) = CXF1L_L
-         CXF2L(ND) = CXF2L_L
-!Art!$omp end parallel
 
 !   Units: Dipole polarizations are in units of [E]*d**3, where d=lattic
 !          spacing, and [E]=dimensions of E field
@@ -914,8 +1011,9 @@
 !          Now multiply by AK3/SQRT(E02) (units of 1/([E]d**3)) to get
 !          dimensionless result.
 
-         CXF1L(ND)=CXF1L(ND)*TERM
-         CXF2L(ND)=CXF2L(ND)*TERM
+         CXF1L(ND)=CXF1L_L*TERM
+         CXF2L(ND)=CXF2L_L*TERM
+!Art!$omp end parallel
 
 ! diagnostic
 !        write(0,9700)nd,cxf1l(nd),cxf2l(nd)

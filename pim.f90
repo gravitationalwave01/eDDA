@@ -715,7 +715,6 @@
 
 !  Call monitoring routine
         CALL PROGRESS(LOCLEN,ITNO,EXITNORM,X,WRK(IR),WRK(IZ))
-
         IF (STATUS==0) THEN
           GO TO 9999
         END IF

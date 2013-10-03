@@ -240,5 +240,5 @@
          3F10.5,' = lattice offset x0(1-3) = (x_TF,y_TF,z_TF)/d ', &
                'for dipole 0 0 0',/,                               &
          '     JA  IX  IY  IZ ICOMP(x,y,z)')
-9030  FORMAT (I7,3I5,3I2)
+9030  FORMAT(I7,3I5,3I2)
     END SUBROUTINE TARELL

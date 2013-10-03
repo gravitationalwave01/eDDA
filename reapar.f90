@@ -1,45 +1,48 @@
     SUBROUTINE REAPAR(CBINFLAG,AEFFA,BETAMI,BETAMX,CALPHA,CFLEPS,CFLPAR,     &
-                      CFLSHP,CMDSOL,CMDFFT,CMDFRM,CSHAPE,CMDTRQ,CXE01,CXE02, &
-                      DEGRAD,ETASCA,GAMMA,IDVERR,IDVOUT,INIT,IOPAR,IORTH,    &
-                      JPBC,IWRKSC,IWRPOL,MXNX,MXNY,MXNZ,MXBETA,MXCOMP,MXPHI, &
-                      MXRAD,MXSCA,MXTHET,MXWAV,NBETA,NCOMP,NPHI,NRAD,NSCA,   &
-                      NTHETA,NWAV,IWAV0,IRAD0,IORI0,NSMELTS,PHIMIN,PHIMAX,   &
-                      PHIN,THETAN,THETMI,THETMX,TOL,WAVEA,SHPAR,SMIND1,      &
-                      SMIND2,DX,CENTER,ELENERGY) !ARGUMENT 'CENTER' and 'ELENERGY' ADDED BY NWB 3/13/12 and 7/12/12
+                      CFLSHP,CMDSOL,CMDFFT,CMDFRM,CSHAPE,CMDTRQ,CXE01_LF,    &
+                      CXE02_LF,DEGRAD,ETASCA,EXTNDXYZ,GAMMA,IDVERR,IDVOUT,   &
+                      INIT,IOPAR,IORTH,JPBC,IWRKSC,IWRPOL,MXITER,MXNX,MXNY,  &
+                      MXNZ,MXBETA,MXCOMP,MXPHI,MXRAD,MXSCA,MXTHET,MXWAV,     &
+                      NBETA,NCOMP,NPHI,NRAD,NRFLD,NRFLDB,NSCA,NTHETA,NWAV,   &
+                      IWAV0,IRAD0,IORI0,NSMELTS,PHIMIN,PHIMAX,PHIN,THETAN,   &
+                      THETMI,THETMX,TOL,WAVEA,SHPAR,SMIND1,SMIND2,DX,NAMBIENT,CENTER,ELENERGY)
+!Argument 'CENTER' and 'ELENERGY' added by SMC 8.5.13 following NWB 3/13/12
       USE DDPRECISION,ONLY: WP
+      USE DDCOMMON_0,ONLY: IDIPINT
       IMPLICIT NONE
-
+!----------------------------- reapar_v3 -----------------------------------
 ! Arguments:
 
       CHARACTER :: CALPHA*(*),CBINFLAG*(*),CFLPAR*(*),CFLSHP*80,CMDSOL*(*), &
                    CMDFFT*(*),CMDFRM*(*),CMDTRQ*(*),CSHAPE*(*)
-      INTEGER :: IDVERR,IDVOUT,INIT,IOPAR,IORI0,IORTH,JPBC,IRAD0,IWAV0,      &
-                 IWRKSC,IWRPOL,MXBETA,MXCOMP,MXNX,MXNY,MXNZ,MXPHI,MXRAD,     &
-                 MXSCA,MXTHET,MXWAV,NBETA,NCOMP,NPHI,NRAD,NSCA,NSMELTS,NWAV, &
-                 NTHETA
+      INTEGER :: IDVERR,IDVOUT,INIT,IOPAR,IORI0,IORTH,JPBC,IRAD0,IWAV0,   &
+                 IWRKSC,IWRPOL,MXBETA,MXCOMP,MXITER,MXNX,MXNY,MXNZ,MXPHI, &
+                 MXRAD,MXSCA,MXTHET,MXWAV,NBETA,NCOMP,NRFLD,NRFLDB,NPHI,  &
+                 NRAD,NSCA,NSMELTS,NWAV,NTHETA
       INTEGER ::    &
          SMIND1(9), &
          SMIND2(9)
       CHARACTER(60) :: &
          CFLEPS(MXCOMP)
-      REAL(WP) :: BETAMI,BETAMX,DEGRAD,ETASCA,GAMMA,PHIMIN,PHIMAX, &
-                  THETMI,THETMX,TOL,ELENERGY !ELENERGY ADDED BY NWB 7/12/12
-      REAL(WP) ::       &
-         AEFFA(MXRAD),  &
-         DX(3),         &
-         PHIN(MXSCA),   &
-         SHPAR(12),     &
-         THETAN(MXSCA), &
-         WAVEA(MXWAV),  &
-         CENTER(3) !CENTER added by NWB 3/13/12
-      COMPLEX(WP) :: &
-         CXE01(3),   &
-         CXE02(3)
+      REAL(WP) :: BETAMI,BETAMX,DEGRAD,ETASCA,GAMMA,NAMBIENT,PHIMIN,PHIMAX, &
+                  THETMI,THETMX,TOL,ELENERGY !ELENERGY added by SMC 8.5.13 following NWB 7/12/12
+      REAL(WP) ::        &
+         AEFFA(1:MXRAD), &
+         DX(1:3),        &
+         EXTNDXYZ(1:6),  &
+         PHIN(MXSCA),    &
+         SHPAR(1:12),    &
+         THETAN(MXSCA),  &
+         WAVEA(MXWAV),   &
+         CENTER(3) !CENTER added by SMC 8.5.13 following NWB 3/13/12
+      COMPLEX(WP) ::    &
+         CXE01_LF(1:3), &
+         CXE02_LF(1:3)
 
 ! Local variables:
 
       CHARACTER :: CDIVID*3,CLINE*70,CMSGNM*70,CWHERE*70
-      INTEGER :: J,JPLANE,NPLANES,NSCA0
+      INTEGER :: J,JPLANE,NF,NPLANES,NSCA0
       REAL(WP) :: AEFEND,AEFINI,DELTA,DTHETA,E1,PHI1,THETA1,THETA2, &
          WAVEND,WAVINI
 
@@ -54,12 +57,15 @@
 
 ! Given:
 !       CFLPAR = name of file (normally 'ddscat.par')
-
+!       NRFLD    = 0 on first call
+!                = 1 if previous call set NRFLD=1 to prepare to do
+!                    nearfield calculation
 ! Returns:
 !       CMDTRQ   = 'NOTORQ' or 'DOTORQ'
-!       CMDSOL   = 'PBCGST' or 'PBCGS2' or 'PETRKP'
+!       CMDSOL   = 'PBCGST' or 'PBCGS2' or 'PETRKP' or 'GPBICG' or 'QMRCCG' or
+!                  'SBIGCG'
 !       CMDFFT   = 'GPFAFT' or 'FFTW21' or 'FFTMKL'
-!       CALPHA   = 'LATTDR' or 'GKDLDR'
+!       CALPHA   = 'LATTDR' or 'GKDLDR' or 'FLTRCD'
 !       CBINFLAG = 'ALLBIN' or 'ORIBIN' or 'NOTBIN'
 !       CSHAPE   = 'RCTGLPRSM' or 'ELLIPSOID' or ... other valid shape
 !       JPBC     = 0 :isolated finite targets
@@ -68,18 +74,29 @@
 !                = 3 :target periodic in both y and z directions
 !       NCOMP    = number of compositions
 !       CFLEPS(1-NCOMP) = filenames for dielectric functions
-!       INIT     = 0 or 1 or 2
+!       NRFLD    = 0 : skip near-field calculations
+!                = 1 : to prepare to do additional near-field calculation
+!                = 2 : to perform near-field calculation itself
+!      IDIPINT   = 0 for point dipole interaction method
+!		 = 1 for filtered coupled dipole (FCD) interaction method
+!       NRFLDB   = 0 : to skip near-field calculation of B
+!                = 1 : to perform near-field calculation of B
+!       EXTNDXYZ(1-6) = fractional expansion of calculational volume
+!                  in -x,+x,-y,+y,-z,+z directions
+!                  (used only if NRFLD=1) 
+!       INIT     = 0 (no longer used)
 !       TOL      = error tolerance
 !       GAMMA    = parameter controlling integration limit for PBC
 !       ETASCA   = parameter controlling accuracy of calculation
 !                  of <cos(theta)>
 !                  1 is OK, 0.5 gives high accuracy
 !       NWAV     = number of wavelengths
-!       WAVEA(1-NWAV) = wavelengths (physical units)
+!       WAVEA(1-NWAV) = wavelengths (in vacuo, physical units)
+!       NAMBIENT = (real) refractive index of ambient medium
 !       NRAD     = number of radii
 !       AEFFA(1-NRAD) = target effective radii (physical units)
-!       CXE01(1-3)= (complex) polarization state 1
-!       CXE02(1-3)= complex polarization state 2 (orthogonal to 1)
+!       CXE01_LF(1-3)= (complex) polarization state 1
+!       CXE02_LF(1-3)= complex polarization state 2 (orthogonal to 1)
 !       IORTH    = 1 or 2 (number of incident polarization states to use
 !       IWRKSC   = 0 or 1 (not write/write ".sca" files)
 !       IWRPOL   = 0 or 1 (not write/write ".pol" files)
@@ -309,12 +326,56 @@
 !                 target options DW1996TAR and MLTBLOCKS
 ! 10.01.02 (BTD): Add code to write out SHPAR info to running output
 ! 10.02.05 (BTD): Corrected error that caused DW1996TAR option to fail
+! 10.05.08 (BTD): ver7.2.0
+!                 * Added support for CCG option GPBICG
+!                 * Added support for CCG option QMRCCG
+! 10.05.09 (BTD): * set MXITER in ddscat.par
+! 11.07.29 (BTD): * Add support for target option NEARFIELD
+!                 * corrected error affecting reading input for SPHROID_2
+! 11.08.12 (BTD): ver7.2.1
+!                 * eliminate target option NEARFIELD
+!                 * Add NRFLD and EXTNDXYZ to argument list
+!                 * Add code to read NRFLD and EXTNDXYZ
+! 11.08.16 (BTD): * suppress diagnostic write statements
+! 11.08.30 (BTD): ver7.2.2
+!                 * add support for refractive index of ambient medium
+!                 * add variable NAMBIENT to argument list
+! 11.08.31 (BTD)  * improve diagnostics
+! 11.10.18 (BTD)  * add support for target optino EL_IN_RCT
+! 11.11.07 (BTD)  ver7.1.1 and ver7.2.2
+!                 * Corrected error reported by V. Choliy 11.11.07
+!                   had failed convert PHI1 from degrees to radians
+!                   for JPBC=1 or JPBC=2
+! 11.11.18 (BTD)  * change notation
+!                   CXE01 -> CXE01_LF
+!                   CXE02 -> CXE02_LF
+!                 * added support for reading aeff from table
+! 12.01.23 (BTD)  * suppress line to read IWRPOL from ddscat.par
+!                 * permanently set IWRPOL=0
+! 12.07.10 (BTD) reapar_v2 and ver7.3
+!                 * added NRFLDB to argument list
+!                 * added code to set NRFLDB=0 if NF=0 or 1 in ddscat.par
+!                                 set NRFLDB=1 if NF=2
+! 12.08.02 (IYW)  * added DIPINT to argument list
+! 12.08.11 (BTD)  * removed DIPINT from argument list
+!                 * added IDIPINT from module DDCOMMON_0
+! 12.12.28 (BTD) reapar_v3
+!                 * eliminate reading IDIPINT from ddscat.par
+!                 * added option to read DDA method = FLTRCD
+!                   and set IDIPINT=1
+! 13.01.04 (BTD)  * corrected typo aeffa(nwav) -> aeffa(nrad)
+! 13.01.10 (BTD)  * added CG option SBICGM
 ! end history
 ! Copyright (C) 1993,1994,1995,1996,1997,1998,1999,2000,2002,2003,2004
-!               2005,2006,2007,2008,2009,2010 B.T. Draine and P.J. Flatau
+!               2005,2006,2007,2008,2009,2010,2011,2012,2013
+!               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 
 !***********************************************************************
+
+! 110801 (BTD) variable INIT no longer used, but definite it anyway
+
+      INIT=0
 
       OPEN(UNIT=IOPAR,FILE=CFLPAR,STATUS='OLD')
       CWHERE='error reading line 1 of ddscat.par'
@@ -341,9 +402,9 @@
          WRITE(CMSGNM,FMT='(A,A)')CMDTRQ,' - do not compute torques '
          CALL WRIMSG('REAPAR',CMSGNM)
       ELSE
-! diagnostic
-         write(0,*)'reapar ckpt 0.1 : CMDTRQ=',CMDTRQ
-!
+!*** diagnostic
+!         write(0,*)'reapar ckpt 0.1 : CMDTRQ=',CMDTRQ
+!***
          CALL ERRMSG('FATAL','REAPAR',' wrong definition of CMDTRQ')
       ENDIF
 
@@ -355,15 +416,27 @@
 !             = 'PBCGS2' -  M.A Botcheve implementation of BiCGstab 
 !                           enhanced to improve convergence properties
 !                           with finite precision arithmetic
+!             = 'GPBICG' -  Tang et al conjugate gradient solver implemented
+!                           by P.C. Chaumet & A. Rahmani
+!             = 'QMRCCG' -  PIM interface to QMR solver implemented by
+!                           P.C. Chaumet and A. Rahmani
+!             = 'SBICGM' -  Simplified Bi Conjugate Gradient Method
+!                           implemented by Sarkar, Yang, & Arvas 1988
 
       CWHERE='error reading CMDSOL from ddscat.par'
       READ(IOPAR,FMT=*,ERR=99) CMDSOL
       IF(CMDSOL=='petrkp')CMDSOL='PETRKP'
       IF(CMDSOL=='pbcgst')CMDSOL='PBCGST'
       IF(CMDSOL=='pbcgs2')CMDSOL='PBCGS2'
+      IF(CMDSOL=='gpbicg')CMDSOL='GPBICG'
+      IF(CMDSOL=='qmrccg')CMDSOL='QMRCCG'
+      IF(CMDSOL=='sbicgm')CMDSOL='SBICGM'
       IF(CMDSOL=='PETRKP'.OR. &
          CMDSOL=='PBCGST'.OR. &
-         CMDSOL=='PBCGS2')THEN
+         CMDSOL=='PBCGS2'.OR. &
+         CMDSOL=='GPBICG'.OR. &
+         CMDSOL=='QMRCCG'.OR. &
+         CMDSOL=='SBICGM')THEN
          WRITE(CMSGNM,FMT='(A,A)')CMDSOL,' - CCG Method  '
          CALL WRIMSG('REAPAR',CMSGNM)
       ELSE
@@ -406,14 +479,24 @@
 !                          Draine & Goodman (1993)
 !               'GKDLDR' - Lattice Dispersion Relation of
 !                          Gutkowicz-Krusin & Draine (2004)
+!               'FLTRCD' - Filtered Discrete Dipole treatment of
+!                          Piller & Martin (1998) as corrected by
+!                          Gay-Balmaz & Martin (2002) and discussed by
+!                          Yurkin, Min, & Hoekstra (2010)
 
       CWHERE='error reading CALPHA from ddscat.par'
       READ(IOPAR,FMT=*,ERR=99)CALPHA
       IF(CALPHA=='LATTDR')THEN
          CALL WRIMSG('REAPAR','LATTDR - Draine & Goodman (1993) LDR for alpha')
+         IDIPINT=0
       ELSEIF(CALPHA=='GKDLDR')THEN
          CALL WRIMSG('REAPAR', &
-                    'GKDLDR - Gutkowicz-Krusin & Draine (2004) LDR for alpha')
+                     'GKDLDR - Gutkowicz-Krusin & Draine (2004) LDR for alpha')
+         IDIPINT=0
+      ELSEIF(CALPHA=='FLTRCD')THEN
+         CALL WRIMSG('REAPAR', &
+                     'FLTRCD - Filtered Coupled Dipole (Piller & Martin 1998)')
+         IDIPINT=1
       ELSE
          CALL ERRMSG('FATAL','REAPAR',' wrong definition of CALPHA')
       ENDIF
@@ -443,6 +526,7 @@
       WRITE(CMSGNM,FMT='(A,3I6,A)')'allow MXNX,MXNY,MXNZ=',MXNX,MXNY,MXNZ, &
                                    ' for target generation'
       CALL WRIMSG('REAPAR',CMSGNM)
+
 !=======================================================================
 
 ! e-BEAM CENTROID READER
@@ -453,7 +537,7 @@
 !======================================================================= 
 
 ! ELECTRON RELATIVISTIC ENERGY READER
-! Added by NWB 7/12/12
+! Added by SMC8.5.13 following NWB 7/12/12
 
       READ(IOPAR,FMT=*,ERR=99)ELENERGY
 
@@ -501,6 +585,7 @@
 !             = 'DSKRCTNGL'  single disk on rectangular slab
 !             = 'DSKRCTPBC'  1-d or 2-d array of disk on rectangular slab
 !             = 'DW1996TAR'  13-cube target used by Draine & Weingartner 1996
+!             = 'EL_IN_RCT'  ellipsoid embedded in rectangular block
 !             = 'ELLIPSOID'  ellipsoid (homogeneous and isotropic)
 !             = 'ELLIPSPBC'  1-d or 2-d array of ellipsoids
 !             = 'ELLIPSO_2'  two touching isotropic ellipsoids of 
@@ -549,6 +634,7 @@
       IF(CSHAPE=='dskblypbc')CSHAPE='DSKBLYPBC'
       IF(CSHAPE=='dskrctpbc')CSHAPE='DSKRCTPBC'
       IF(CSHAPE=='dw1996tar')CSHAPE='DW1996TAR'
+      IF(CSHAPE=='el_in_rct')CSHAPE='EL_IN_RCT'
       IF(CSHAPE=='ellipsoid')CSHAPE='ELLIPSOID'
       IF(CSHAPE=='ellipso_2')CSHAPE='ELLIPSO_2'
       IF(CSHAPE=='ellipso_3')CSHAPE='ELLIPSO_3'
@@ -591,6 +677,7 @@
          CSHAPE=='DSKRCTNGL'.OR. &
          CSHAPE=='DSKRCTPBC'.OR. &
          CSHAPE=='DW1996TAR'.OR. &
+         CSHAPE=='EL_IN_RCT'.OR. &
          CSHAPE=='ELLIPSOID'.OR. &
          CSHAPE=='ELLIPSO_2'.OR. &
          CSHAPE=='ELLIPSO_3'.OR. &
@@ -641,17 +728,16 @@
          CWHERE='error reading 1 shape parameter in ddscat.par'
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1)
          WRITE(CMSGNM,FMT='(0PF10.5,A)')SHPAR(1),' = SHPAR(1)'
-         CALL WRIMSG('TARGET',CMSGNM)
+         CALL WRIMSG('REAPAR',CMSGNM)
 
 ! targets needing 2 shape parameters:
 
-      ELSEIF(CSHAPE=='CYLNDRCAP'.OR.CSHAPE=='SPHROID_2'.OR. &
-             CSHAPE=='UNIAXICYL')THEN
+      ELSEIF(CSHAPE=='CYLNDRCAP'.OR.CSHAPE=='UNIAXICYL')THEN
          CWHERE='error reading 2 shape parameters in ddscat.par'
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1),SHPAR(2)
          DO J=1,2
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 2 shape parameters and file name:
@@ -660,11 +746,11 @@
              CSHAPE=='SPH_ANI_N')THEN
          CWHERE='error reading 2 shape parameters and filename in ddscat.par'
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1),SHPAR(2),CFLSHP
-         CALL WRIMSG('TARGET','shape file=')
-         CALL WRIMSG('TARGET',CFLSHP)
+         CALL WRIMSG('REAPAR','shape file=')
+         CALL WRIMSG('REAPAR',CFLSHP)
          DO J=1,2
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 3 shape parameters:
@@ -678,7 +764,7 @@
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1),SHPAR(2),SHPAR(3)
          DO J=1,3
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 3 shape parameters and file name:
@@ -686,11 +772,11 @@
       ELSEIF(CSHAPE=='SPHRN_PBC')THEN
          CWHERE='error reading 3 shape parameters and filename in ddscat.par'
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1),SHPAR(2),SHPAR(3),CFLSHP
-         CALL WRIMSG('TARGET','shape file=')
-         CALL WRIMSG('TARGET',CFLSHP)
+         CALL WRIMSG('REAPAR','shape file=')
+         CALL WRIMSG('REAPAR',CFLSHP)
          DO J=1,3
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
          
 ! targets needing 4 shape parameters
@@ -700,7 +786,7 @@
          READ(IOPAR,FMT=*,ERR=99)SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4)
          DO J=1,4
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 5 shape parameters
@@ -711,19 +797,20 @@
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,5)
          DO J=1,5
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 6 shape parameters:
 
       ELSEIF(CSHAPE=='BISLINPBC'.OR.CSHAPE=='CONELLIPS'.OR. &
-             CSHAPE=='GAUSS_SPH'.OR.CSHAPE=='RCTG_RCTG'.OR. &
-             CSHAPE=='SLBHOLPBC'.OR.CSHAPE=='SPHROID_2')THEN
+             CSHAPE=='EL_IN_RCT'.OR.CSHAPE=='GAUSS_SPH'.OR. &
+             CSHAPE=='RCTG_RCTG'.OR.CSHAPE=='SLBHOLPBC'.OR. &
+             CSHAPE=='SPHROID_2')THEN
          CWHERE='error reading 6 shape parameters in ddscat.par'
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,6)
          DO J=1,6
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 7 shape parameters:
@@ -733,7 +820,7 @@
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,7)
          DO J=1,7
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 8 shape parameters:
@@ -743,7 +830,7 @@
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,8)
          DO J=1,8
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 9 shape parameters:
@@ -753,7 +840,7 @@
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,9)
          DO J=1,9
             WRITE(CMSGNM,FMT='(0PF10.5,A,I1,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
 ! targets needing 10 shape parameters: none
@@ -765,11 +852,11 @@
          READ(IOPAR,FMT=*,ERR=99)(SHPAR(J),J=1,11)
          DO J=1,11
             WRITE(CMSGNM,FMT='(0PF10.5,A,I2,A)')SHPAR(J),' = SHPAR(',J,')'
-            CALL WRIMSG('TARGET',CMSGNM)
+            CALL WRIMSG('REAPAR',CMSGNM)
          ENDDO
 
       ELSE
-         CALL ERRMSG('FATAL','REAPAR',                                   &
+         CALL ERRMSG('FATAL','REAPAR',                                    &
             ' No instructions for reading shape parameters for this shape')
       ENDIF
 
@@ -934,10 +1021,69 @@
       CWHERE='error reading filename(s) for diel.fn. in ddscat.par'
       DO J=1,NCOMP
          READ(IOPAR,FMT=*,ERR=99)CFLEPS(J)
-         WRITE(CMSGNM,FMT='(I2,A,A)')J,' ',CFLEPS(J)
+         WRITE(CMSGNM,FMT='(A,I3,A,A)')'comp',J,' : ',CFLEPS(J)
          CALL WRIMSG('REAPAR',CMSGNM)
       ENDDO
 
+!=======================================================================
+
+!   Specify whether NEARFIELD calculation is to be done
+!   and specify fractional expansion of computational volume
+
+! skip line:
+
+      READ(IOPAR,FMT=*,ERR=99)CLINE
+      CALL WRIMSG('REAPAR',CLINE)
+      
+      CWHERE='error reading NRFLD (=0 or 1 or 2) in ddscat.par'
+      READ(IOPAR,FMT=*,ERR=99)NF
+      NRFLDB=0
+      IF(NF==0)THEN
+         WRITE(CMSGNM,FMT='(I2,A)')NF,                   &
+            ' = NRFLD : nearfield calculation not desired'
+      ELSEIF(NF==1)THEN
+         WRITE(CMSGNM,FMT='(I2,A)')NF,                           &
+            ' = NRFLD : calculate nearfield E in specified volume'
+      ELSEIF(NF==2)THEN
+         WRITE(CMSGNM,FMT='(I2,A)')NF,                                 &
+            ' = NRFLD : calculate nearfield E and B in specified volume'
+         NF=1
+         NRFLDB=1
+      ELSE
+         WRITE(CMSGNM,FMT='(I6,A)')NF,                                       &
+            ' = NRFLD but NRFLD should be 0,1,or 2: fatal error in ddscat.par'
+         CALL WRIMSG('REAPAR',CMSGNM)
+         STOP
+      ENDIF
+      CALL WRIMSG('REAPAR',CMSGNM)
+
+      NRFLD=NRFLD+NF
+
+! upon return to DDSCAT:
+! if NRFLD = 0: no interest in nearfield calculation
+!            1: prepare to do nearfield calculation on next pass
+!            2 and NRFLDB=0: perform nearfield calculation of E only 
+!            2 and NRFLDB=1: perform nearfield calculation of both E and B
+
+      CWHERE='error reading EXTNDXYZ(1:6) in ddscat.par'
+      IF(NRFLD>0)THEN
+         READ(IOPAR,FMT=*,ERR=99)EXTNDXYZ(1:6)
+      ELSE
+         READ(IOPAR,FMT=*,ERR=99)
+         DO J=1,6
+            EXTNDXYZ(J)=0._WP
+         ENDDO
+      ENDIF
+
+!*** diagnostic
+!      write(0,*)'reapar ckpt 0.5'
+!***
+      WRITE(CMSGNM,FMT='(6F6.3)')EXTNDXYZ
+      CALL WRIMSG('REAPAR',CMSGNM)
+      WRITE(CMSGNM,FMT='(A)')                                  &
+         ' fractional extension in -x,+x,-y,+y,-z,+z directions'
+      CALL WRIMSG('REAPAR',CMSGNM)
+      
 !=======================================================================
 
 !    Define INITIALIZATION:
@@ -974,31 +1120,38 @@
  
       CWHERE='error reading TOL in ddscat.par'
       READ(IOPAR,FMT=*,ERR=99)TOL
-! 2009.08.27 (BTD) add code to catch problem with
-! we exoect TOL to be between 1e-10 and <1.
+      WRITE(CMSGNM,FMT='(1PE10.3,A)')TOL,                          &
+            ' = TOL = max. acceptable normalized residual |Ax-E|/|E|'
+      CALL WRIMSG('REAPAR',CMSGNM)
+
+! skip line
+
+      READ(IOPAR,FMT=*,ERR=99)CLINE
+      CALL WRIMSG('REAPAR',CLINE)
+      CWHERE='error reading MXITER in dddscat.par'
+      READ(IOPAR,FMT=*,ERR=99)MXITER
+      WRITE(CMSGNM,FMT='(I10,A)')MXITER,' = MXITER'
+      CALL WRIMSG('REAPAR',CMSGNM)
+
+! 2009.08.27 (BTD) add code to catch problems
+! we expect TOL to be between 1e-10 and <1.
 ! if outside this range, there has probably been an error reading TOL
-      IF(TOL.GE.1.E-10_WP.AND.TOL.LT.1.E0_WP)THEN
-         GOTO 2000
-      ELSE
+
+      IF(TOL.LT.1.E-10_WP.OR.TOL.GT.1.E0_WP)THEN
+
+         WRITE(CMSGNM,FMT='(A)')                                &
+               'Appears that there has been an error reading TOL'
+         CALL WRIMSG('REAPAR',CMSGNM)
 
 !    Note: if the number of diel.fn. files is less than NCOMP or
 !          greater than NCOMP, this will lead to subsequent errors
 !          in reading ddscat.par, which will probably affect reading
 !          of TOL
-
-         WRITE(CMSGNM,FMT='(1PE10.3,A)')TOL,' = TOL'
-         CALL WRIMSG('REAPAR',CMSGNM)
-         WRITE(CMSGNM,FMT='(A)')                                 &
-               'Appears that there has been an error reading TOL'
-         CALL WRIMSG('REAPAR',CMSGNM)
-         WRITE(CMSGNM,FMT='(A)')                             &
+         WRITE(CMSGNM,FMT='(A)')                            &
                'Check whether there are NCOMP diel.fn. files'
          CALL WRIMSG('REAPAR',CMSGNM)
          GOTO 99
       ENDIF
- 2000 WRITE(CMSGNM,FMT='(1PE10.3,A)')TOL,                          &
-            ' = TOL = max. acceptable normalized residue |Ax-E|/|E|'
-      CALL WRIMSG('REAPAR',CMSGNM)
       IF(TOL<1.E-5_WP.OR.TOL>1.E-1_WP)THEN
          CALL ERRMSG('WARNING','REAPAR',' Strange value of TOL ')
       ENDIF
@@ -1023,7 +1176,8 @@
             CALL ERRMSG('WARNING','REAPAR',' Strange value of GAMMA ')
          ENDIF
       ELSE
-         WRITE(CMSGNM,FMT='(A)')'[GAMMA is not used in present calculation]'
+         WRITE(CMSGNM,FMT='(A)')                              &
+         '[GAMMA is not used in present (non-PBC) calculation]'
          CALL WRIMSG('REAPAR',CMSGNM)
       ENDIF
 
@@ -1106,20 +1260,69 @@
 
 !=======================================================================
 
-!    Define AEFF = radius of equal-volume sphere (physical units)
+!    Define NAMBIENT = refractive index of ambient medium
+
+      READ(IOPAR,FMT=*,ERR=99)CLINE
+      CALL WRIMSG(' ',CLINE)
+      CWHERE='error reading NAMBIENT in ddscat.par'
+      READ(IOPAR,FMT=*,ERR=99)NAMBIENT
+      WRITE(CMSGNM,FMT='(F7.4,A)')NAMBIENT,               &
+         ' = NAMBIENT = refractive index of ambient medium'
+      CALL WRIMSG('REAPAR',CMSGNM)
+
+!=======================================================================
+
+!    Define AEFF = effective radius a_eff 
+!                = radius of equal-solid-volume sphere (physical units)
+!    AEFINI = first a_eff (physical units)
+!    AEFEND = last a_eff (physical units)
+!    NRAD   = number of a_eff
+!    CDIVID = 'LIN', 'LOG', or 'INV' for equal increments in
+!              a_eff, log(a_eff), or 1/a_eff
+!           = 'TAB' to read aeff from file 'aeff.tab'
 
       READ(IOPAR,FMT=*,ERR=99)CLINE
       CALL WRIMSG(' ',CLINE)
       CWHERE='error reading firstaeff, lastaeff, number, how in ddscat.par'
       READ(IOPAR,FMT=*,ERR=99)AEFINI,AEFEND,NRAD,CDIVID
-      IF(CDIVID/='LIN'.AND.CDIVID/='LOG'.AND.CDIVID/='INV')THEN
+      IF(CDIVID/='LIN'.AND.CDIVID/='LOG'.AND.CDIVID/='INV'.AND. &
+         CDIVID/='TAB')THEN
          CALL ERRMSG('FATAL','REAPAR', &
-                     ' CDIVID for radii must be LIN,LOG, or INV')
+                     ' CDIVID for radii must be LIN,LOG,INV, or TAB')
       ENDIF
-      WRITE(CMSGNM,FMT='(I3,A,F7.4,A,F7.4)')NRAD,' eff. radii from ', &
-                                            AEFINI,' to ',AEFEND
-      CALL WRIMSG('REAPAR',CMSGNM)
-      CALL DIVIDE(CDIVID,AEFINI,AEFEND,NRAD,MXRAD,AEFFA)
+      IF(CDIVID/='TAB')THEN
+         WRITE(CMSGNM,FMT='(I3,A,F7.4,A,F7.4)')NRAD,' eff. radii from ', &
+                                               AEFINI,' to ',AEFEND
+         CALL WRIMSG('REAPAR',CMSGNM)
+         CALL DIVIDE(CDIVID,AEFINI,AEFEND,NRAD,MXRAD,AEFFA)
+      ELSE
+         OPEN(UNIT=28,FILE='aeff.tab',STATUS='OLD')
+
+! skip one header line
+
+         READ(28,*)
+         NRAD=0
+ 1100    READ(28,*,END=1200)AEFINI
+!*** diagnostic
+         write(0,*)'reapar_v3 ckpt 1: aefini=',aefini
+!***
+         NRAD=NRAD+1
+         IF(NRAD>MXRAD)THEN
+            WRITE(CMSGNM,FMT='(A,I4,A,I4,A)')'NRAD=',NRAD,' > MXRAD=', &
+                  MXRAD,' need to recompile with larger MXRAD'
+            CALL WRIMSG('REAPAR',CMSGNM)
+            CALL ERRMSG('FATAL','REAPAR',' NRAD > MXRAD')
+         ENDIF
+
+! 13.01.04 (BTD) correct typo: aeff(nwav) -> aeff(nrad)
+
+         AEFFA(NRAD)=AEFINI
+         GOTO 1100
+ 1200    CLOSE(28)
+         WRITE(CMSGNM,FMT='(I3,A,F7.4,A,F7.4)')NRAD,   &
+               ' eff. radii from ',AEFFA(1),' to ',AEFFA(NRAD)
+         CALL WRIMSG('REAPAR',CMSGNM)
+      ENDIF
 
 !=======================================================================
 
@@ -1131,27 +1334,28 @@
       READ(IOPAR,FMT=*,ERR=99)CLINE
       CALL WRIMSG(' ',CLINE)
 
-! Read complex polarization vector CXE01=e01 (normalize if necessary).
+! Read complex polarization vector CXE01_LF=e01 (normalize if necessary).
 
-      CWHERE='error reading CXE01 in ddscat.par'
-      READ(IOPAR,FMT=*,ERR=99)CXE01
-      E1=REAL(SQRT(CXE01(1)*CONJG(CXE01(1))))
+      CWHERE='error reading CXE01_LF in ddscat.par'
+      READ(IOPAR,FMT=*,ERR=99)CXE01_LF
+      E1=REAL(SQRT(CXE01_LF(1)*CONJG(CXE01_LF(1))))
       IF(E1/=0._WP)THEN
-         CALL ERRMSG('FATAL','REAPAR',' CXE01(1) must be zero!')
+         CALL ERRMSG('FATAL','REAPAR',' CXE01_LF(1) must be zero!')
       ENDIF
 
 ! Normalize:
 
-      E1=SQRT(REAL(CXE01(2)*CONJG(CXE01(2))+CXE01(3)*CONJG(CXE01(3))))
-      CXE01(2)=CXE01(2)/E1
-      CXE01(3)=CXE01(3)/E1
+      E1=SQRT(REAL(CXE01_LF(2)*CONJG(CXE01_LF(2))+ &
+                   CXE01_LF(3)*CONJG(CXE01_LF(3))))
+      CXE01_LF(2)=CXE01_LF(2)/E1
+      CXE01_LF(3)=CXE01_LF(3)/E1
 
-! Construct orthogonal normalized polarization vector CXE02=e02
+! Construct orthogonal normalized polarization vector CXE02_LF=e02
 ! using xhat cross e01* = e02
 
-      CXE02(1)=(0._WP,0._WP)
-      CXE02(2)=-CONJG(CXE01(3))
-      CXE02(3)=CONJG(CXE01(2))
+      CXE02_LF(1)=(0._WP,0._WP)
+      CXE02_LF(2)=-CONJG(CXE01_LF(3))
+      CXE02_LF(3)=CONJG(CXE01_LF(2))
 
 ! IORTH=1 to calculate only for single polarization
 !      =2 to also calculate for orthogonal polarization
@@ -1178,16 +1382,32 @@
 !***********************************************************************
 
 !    Specify whether or not to write ".pol" files
+!***
+! 12.01.23 (BTD) * eliminate this -- no longer needed since we now
+!                  include support for fast nearfield calculations,
+!                  and program callreadE to read the nearfield output files.
+!                * now initialize IWRPOL=0, although this can then
+!                  be over-ridden to set IWRPOL=1 when NRFLD=1
 
 ! IWRPOL=0 to NOT write ".pol1" and ".pol2" file for each
 !          target orientation (beta,theta)
 !       =1 to write ".pol1" and ".pol2" file for each
 !          target orientation (beta,theta)
 
-      CWHERE='error reading IWRPOL in ddscat.par'
-      READ(IOPAR,FMT=*,ERR=99)IWRPOL
-      WRITE(CMSGNM,FMT='(A,I2)')'IWRPOL=',IWRPOL
-      CALL WRIMSG('REAPAR',CMSGNM)
+!      CWHERE='error reading IWRPOL in ddscat.par'
+!      READ(IOPAR,FMT=*,ERR=99)IWRPOL
+!      WRITE(CMSGNM,FMT='(A,I2)')'IWRPOL=',IWRPOL
+!      CALL WRIMSG('REAPAR',CMSGNM)
+
+      IWRPOL=0
+
+! In the event that user set NRFLD=1 but IWRPOL=0, set IWRPOL to 1
+
+      IF(NRFLD==1.AND.IWRPOL<=0)THEN
+         IWRPOL=1
+         WRITE(CMSGNM,FMT='(A)')'set IWRPOL=1 because NRFLD=1'
+         CALL WRIMSG('REAPAR',CMSGNM)
+      ENDIF
 
 !***********************************************************************
 
@@ -1353,8 +1573,16 @@
          READ(IOPAR,FMT=*,ERR=99)CLINE
          CWHERE='error reading CMDFRM (only LFRAME or TFRAME allowed)'
          READ(IOPAR,FMT=*,ERR=99)CMDFRM
-         IF(CMDFRM/='LFRAME'.AND.CMDFRM/='lframe'.AND. &
+         IF(CMDFRM/='LFRAME'.AND.CMDFRM/='lframe'.AND.  &
             CMDFRM/='TFRAME'.AND.CMDFRM/='tframe')GOTO 99
+         IF(CMDFRM=='LFRAME'.OR.CMDFRM=='lframe')THEN
+            WRITE(CMSGNM,FMT='(A,A,A)')'CMDFRM=',CMDFRM,   &
+               ' : scattering directions given in Lab Frame'
+         ELSE
+            WRITE(CMSGNM,FMT='(A,A,A)')'CMDFRM=',CMDFRM,   &
+               ' : scattering directions given in Target Frame'
+         ENDIF
+         CALL WRIMSG('REAPAR',CMSGNM)
          CALL WRIMSG('REAPAR',CLINE)
          CWHERE='JPBC=0, error reading NPLANES = number of scat. planes'
          READ(IOPAR,FMT=*,ERR=99)NPLANES
@@ -1363,6 +1591,8 @@
          CWHERE='JPBC=0, error reading scattering directions in ddscat.par'
          IF(NPLANES>0)THEN
             DO JPLANE=1,NPLANES
+               WRITE(CWHERE,FMT='(A,I4)')                                 &
+                  'JPBC=0, about to read specs for scattering plane',JPLANE
                READ(IOPAR,FMT=*,ERR=99,END=99)PHI1,THETA1,THETA2,DTHETA
                WRITE(CMSGNM,FMT='(3F7.1,A,I4)')PHI1,THETA1,THETA2,    &
                      ' = phi, theta_min, theta_max for scatt. plane', &
@@ -1449,12 +1679,17 @@
                THETA1=THETA1/DEGRAD
                THETA2=THETA2/DEGRAD
                DTHETA=DTHETA/DEGRAD
+!------------------------
+! 111107 (BTD) correction 
+!              missing line noted 111107 by Vasyl Choliy, Kyiv Shevchenko Univ.
+               PHI1=PHI1/DEGRAD
+!------------------------
                IF(THETA2<THETA1)DTHETA=-ABS(DTHETA)
 
 ! compute zeta values for this scattering cone
 
                NSCA0=1
-               DELTA=THETA2 - THETA1
+               DELTA=THETA2-THETA1
                IF(DELTA/=0)NSCA0=1+NINT(DELTA/DTHETA)
 
 ! Check that there is sufficient storage
@@ -1466,7 +1701,7 @@
                ENDIF
                THETAN(NSCA+1)=THETA1
                IF(NSCA0>2)THEN
-                  DO J=2,NSCA0 - 1
+                  DO J=2,NSCA0-1
                      THETAN(NSCA+J)=THETA1+(J-1)*DTHETA
                   ENDDO
                ENDIF
@@ -1516,8 +1751,10 @@
             ENDDO
             NSCA=2*NSCA
          ENDIF
-      ENDIF
+
 !=======================================================================
+
+      ENDIF
       CLOSE(IOPAR)
 !*** diagnostic
 !      write(0,*)'reapar ckpt 9: MXNX,MXNY,MXNZ=',MXNX,MXNY,MXNZ

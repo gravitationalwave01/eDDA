@@ -437,18 +437,19 @@
 
 !=============================================================================
 
-    SUBROUTINE SHARE1(A1,A2,A3,AEFFA,BETA,BETADF,BETMID,BETMXD,CALPHA,       &
-                      CBINFLAG,CDESCR,CFLEPS,CMDFFT,CMDFRM,CMDSOL,CMDTRQ,    &
-                      CSHAPE,CXE01,CXE02,DAEFF,DX,ENSC,EM1,EM2,ETASCA,GAMMA, &
-                      IANISO,ICOMP,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,   &
-                      IOCC,IORI0,IORTH,IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,IXYZ0, &
-                      JPBC,MXBETA,MXCOMP,MXN3,MXNAT,MXNX,MXNY,MXNZ,MXPBC,    &
-                      MXPHI,MXRAD,MXSCA,MXTHET,MXWAV,MYID,NAT,NAT0,NAT3,     &
-                      NBETA,NBETH,NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA, &
-                      NWAV,NX,NY,NZ,ORDERM,ORDERN,PHI,PHIDF,PHIMID,PHIMXD,   &
-                      PHIN,PYD,PYDDX,PZD,PZDDX,SHPAR,SMIND1,SMIND2,THETA,    &
-                      THETADF,THETAN,THTMID,THTMXD,TOL,WAVEA,WGTA,WGTB,X0,   &
-                      XMAX,XMIN,YMAX,YMIN,ZMAX,ZMIN)
+    SUBROUTINE SHARE1(A1,A2,A3,AEFFA,BETA,BETADF,BETMID,BETMXD,CALPHA,         &
+                      CBINFLAG,CDESCR,CFLEPS,CMDFFT,CMDFRM,CMDSOL,CMDTRQ,      &
+                      CSHAPE,CXE01_LF,CXE02_LF,DAEFF,DX,ENSC_LF,EM1_LF,EM2_LF, &
+                      ETASCA,GAMMA,IANISO,ICOMP,IDVERR,IDVOUT,ILIN10,ILIN12,   &
+                      INIT,IOBIN,IOCC,IORI0,IORTH,IPBC,IRAD0,IWAV0,IWRKSC,     &
+                      IWRPOL,IXYZ0,JPBC,MXBETA,MXCOMP,MXITER,MXN3,MXNAT,MXNX,  &
+                      MXNY,MXNZ,MXPBC,MXPHI,MXRAD,MXSCA,                       &
+                      MXTHET,MXWAV,MYID,NAMBIENT,NAT,NAT0,NAT3,NBETA,NBETH,    &
+                      NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NWAV,NX,NY,NZ, &
+                      ORDERM,ORDERN,PHI,PHIDF,PHIMID,PHIMXD,PHIN,PYD,PYDDX,    &
+                      PZD,PZDDX,SHPAR,SMIND1,SMIND2,THETA,THETADF,THETAN,      &
+                      THTMID,THTMXD,TOL,WAVEA,WGTA,WGTB,X0,XMAX,XMIN,YMAX,     &
+                      YMIN,ZMAX,ZMIN)
 
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
@@ -462,17 +463,17 @@
 ! dimensioning information:
 
       INTEGER :: MXNAT,MXN3,MXBETA,MXCOMP,MXNX,MXNY,MXNZ,MXPBC, &
-                 MXPHI,MXRAD,MXSCA,MXTHET,MXWAV,MYID
+                 MXPHI,MXRAD,MXSCA,MXTHET,MXWAV
 
       CHARACTER :: CBINFLAG*(*),CALPHA*6,CDESCR*67,CMDFFT*6, &
                    CMDFRM*6,CMDSOL*6,CSHAPE*9,CMDTRQ*6
 
       CHARACTER*60 :: CFLEPS(MXCOMP)
 
-      INTEGER :: IANISO,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,        &
-                 IORTH,IORI0,IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,JPBC,      &
-                 NAT,NAT0,NAT3,NBETA,NBETH,NCOMP,NORI,NPHI,NRAD,NSCAT, &
-                 NSMELTS,NTHETA,NWAV,NX,NY,NZ
+      INTEGER :: IANISO,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,    &
+                 IORTH,IORI0,IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,JPBC,  &
+                 MXITER,MYID,NAT,NAT0,NAT3,NBETA,NBETH,NCOMP,NORI, &
+                 NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NWAV,NX,NY,NZ
 
       INTEGER*2 ::    &
          ICOMP(MXN3), &
@@ -483,8 +484,9 @@
          SMIND1(9),     &
          SMIND2(9)
 
-      REAL(WP) :: BETMID,BETMXD,DAEFF,ETASCA,GAMMA,PHIMID,PHIMXD,PYD,PYDDX, &
-                  PZD,PZDDX,THTMID,THTMXD,TOL,XMAX,XMIN,YMAX,YMIN,ZMAX,ZMIN
+      REAL(WP) :: BETMID,BETMXD,DAEFF,ETASCA,GAMMA,NAMBIENT,PHIMID,PHIMXD,   &
+                  PYD,PYDDX,PZD,PZDDX,THTMID,THTMXD,TOL,XMAX,XMIN,YMAX,YMIN, &
+                  ZMAX,ZMIN
 
       REAL(WP) ::            &
          A1(3),              &
@@ -494,9 +496,9 @@
          BETA(MXBETA),       &
          BETADF(NAT0),       &
          DX(3),              &
-         EM1(3,MXSCA),       &
-         EM2(3,MXSCA),       &
-         ENSC(3,MXSCA),      &
+         EM1_LF(3,MXSCA),       &
+         EM2_LF(3,MXSCA),       &
+         ENSC_LF(3,MXSCA),      &
          ORDERM(MXSCA),      &
          ORDERN(MXSCA),      &
          PHI(MXPHI),         &
@@ -511,9 +513,9 @@
          WGTB(MXBETA),       &
          X0(3)
 
-      COMPLEX(WP) :: &
-         CXE01(3),   &
-         CXE02(3)
+      COMPLEX(WP) ::  &
+         CXE01_LF(3), &
+         CXE02_LF(3)
 
 ! local variables:
       LOGICAL :: SINGLE
@@ -613,8 +615,12 @@
 !                  reordered argument list
 ! 08.05.01 (BTD) * added MYID to argument list
 ! 08.07.22 (BTD) * added XMAX,XMIN,YMAX,YMIN,ZMAX,ZMIN to argument list
+! 12.04.21 (BTD) correct bugs identified by M. Wolff
+!                * added MXITER,NAMBIENT to argument list
+!                * added MPI_BCAST_INT(SINGLE,MXITER,1,0,IERR)
+!                * added MPI_BCAST_REAL(SINGLE,NAMBIENT,1,0,IERR)
 ! end history
-! Copyright (C) 2002,2003,2004,2005,2007,2008 
+! Copyright (C) 2002,2003,2004,2005,2007,2008,2012 
 !               B.T. Draine, M. Collinge, and P.J. Flatau
 !
 ! This code is covered by the GNU General Public License
@@ -681,6 +687,7 @@
       call mpi_barrier(mpi_comm_world,ierr)
 !***
       CALL MPI_BCAST_INT(MXBETA,1,0,IERR)
+      CALL MPI_BCAST_INT(MXITER,1,0,IERR)
 !*** diagnostic
 !      write(0,*)'share1 ckpt 27, myid=',myid
       call mpi_barrier(mpi_comm_world,ierr)
@@ -810,6 +817,7 @@
       CALL MPI_BCAST_REAL(SINGLE,DAEFF,1,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,ETASCA,1,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,GAMMA,1,0,IERR)
+      CALL MPI_BCAST_REAL(SINGLE,NAMBIENT,1,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,PHIMID,1,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,PHIMXD,1,0,IERR)
 !*** diagnostic
@@ -844,12 +852,12 @@
       CALL MPI_BCAST_REAL(SINGLE,BETA,MXBETA,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,BETADF,NAT0,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,DX,3,0,IERR)
-      CALL MPI_BCAST_REAL(SINGLE,EM1,3*MXSCA,0,IERR)
+      CALL MPI_BCAST_REAL(SINGLE,EM1_LF,3*MXSCA,0,IERR)
 !*** diagnostic
 !      write(0,*)'share1 ckpt 80, myid=',myid
 !***
-      CALL MPI_BCAST_REAL(SINGLE,EM2,3*MXSCA,0,IERR)
-      CALL MPI_BCAST_REAL(SINGLE,ENSC,3*MXSCA,0,IERR)
+      CALL MPI_BCAST_REAL(SINGLE,EM2_LF,3*MXSCA,0,IERR)
+      CALL MPI_BCAST_REAL(SINGLE,ENSC_LF,3*MXSCA,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,ORDERM,MXSCA,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,ORDERN,MXSCA,0,IERR)
       CALL MPI_BCAST_REAL(SINGLE,PHI,MXPHI,0,IERR)
@@ -875,8 +883,8 @@
 
 ! Complex arrays:
 
-      CALL MPI_BCAST_CPLX(SINGLE,CXE01,3,0,IERR)
-      CALL MPI_BCAST_CPLX(SINGLE,CXE02,3,0,IERR)
+      CALL MPI_BCAST_CPLX(SINGLE,CXE01_LF,3,0,IERR)
+      CALL MPI_BCAST_CPLX(SINGLE,CXE02_LF,3,0,IERR)
 !*** diagnostic
 !      write(0,*)'share1 ckpt 97, myid=',myid,' returning from share1'
 !***

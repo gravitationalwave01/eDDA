@@ -1,5 +1,6 @@
     SUBROUTINE ROTATE(A1,A2,AK1,CXE01,CXE02,BETA,THETA,PHI,EN0R,CXE01R,CXE02R, &
-        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R)
+        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R,CENTER,CenterX0,CenterX0R,RM2) 
+        !CENTER and CenterX0 added by SMC 14.5.13
       USE DDPRECISION, ONLY : WP
       IMPLICIT NONE
 
@@ -8,14 +9,17 @@
       INTEGER :: MXSCA, NSCAT
       REAL (WP) :: AK1, BETA, THETA, PHI
       REAL (WP) :: A1(3), A2(3), AKSR(3,MXSCA), EM1(3,MXSCA), EM1R(3,MXSCA), &
-        EM2(3,MXSCA), EM2R(3,MXSCA), EN0R(3), ENSC(3,MXSCA)
+        EM2(3,MXSCA), EM2R(3,MXSCA), EN0R(3), ENSC(3,MXSCA), CENTER(3), CenterX0(3), CenterX0R(3)
+        !CenterX0 added by SMC 14.5.13
       COMPLEX (WP) :: CXE01(3), CXE02(3), CXE01R(3), CXE02R(3)
 
 ! Local variables
 
       INTEGER :: I
       REAL (WP) :: BETA0, PHI0, PI, SINTHE, TERM, THETA0
-      REAL (WP) :: RM1(3,3), RM2(3,3), RM3(3,3), VEC(3)
+      REAL (WP) :: RM1(3,3), RM2(3,3), RM3(3,3), VEC(3)  
+                   
+
 !***********************************************************************
 ! Given:
 !       A1(1-3)=axis 1 of (original, unrotated) target
@@ -181,6 +185,10 @@
       VEC(3) = 0._WP
 
       CALL PROD3(RM2,VEC,EN0R)
+
+! Electron beam coordinate vector added by SMC 14.5.13
+
+      CALL PROD3(RM2,CenterX0,CenterX0R)
 
 ! Incident polarization vectors:
 

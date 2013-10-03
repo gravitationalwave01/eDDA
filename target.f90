@@ -1,33 +1,33 @@
-    SUBROUTINE TARGET(A1,A2,CSHAPE,CFLSHP,IDVSHP,IOSHP,CDESCR,MXNAT,SHPAR,DX, &
-                      NAT,IXYZ,ICOMP,IDVOUT,MXN3,NAT3,PYD,PZD,BETADF,PHIDF,   &
-                      THETADF,X0,IANISO,NCOMP_NEED)
+    SUBROUTINE TARGET(A1,A2,CSHAPE,CFLSHP,IDVSHP,IOSHP,CDESCR,MXNAT0,SHPAR, &
+                      DX,NAT0,IXYZ,ICOMP,IDVOUT,MXN3,NAT03,PYD,PZD,BETADF,  &
+                      PHIDF,THETADF,X0,IANISO,NCOMP_NEED)
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
-!------------------------------ target_v3 ------------------------------
+!------------------------------ target_v5 ------------------------------
 ! Arguments:
 
-      INTEGER :: MXNAT,MXN3,NCOMP_NEED
+      INTEGER :: MXNAT0,MXN3,NCOMP_NEED
 
       CHARACTER :: CDESCR*67,CFLSHP*80,CSHAPE*9
       INTEGER*2 ::   &
-         ICOMP(MXNAT,3)
+         ICOMP(MXNAT0,3)
       INTEGER ::     &
-         IXYZ(MXNAT,3)
-      INTEGER :: IANISO,IDVOUT,IDVSHP,IOSHP,NAT,NAT3
+         IXYZ(MXNAT0,3)
+      INTEGER :: IANISO,IDVOUT,IDVSHP,IOSHP,NAT0,NAT03
       REAL(WP) :: PYD,PZD
       REAL(WP) ::        &
          A1(3),          &
          A2(3),          &
-         BETADF(MXNAT),  &
+         BETADF(MXNAT0),  &
          DX(3),          &
-         PHIDF(MXNAT),   &
+         PHIDF(MXNAT0),   &
          SHPAR(12),      &
-         THETADF(MXNAT), &
+         THETADF(MXNAT0), &
          X0(3)
       EXTERNAL ERRMSG,REASHP,TAR2EL,TAR2SP,TAR3EL,TARANIREC,TARBLOCKS,TARCEL, &
          TARCYL,TARCYLCAP,TARELL,TARGSPHER,TARHEX,TARLYRSLAB,TARNAS,TARNSP,   &
-         TARPBXN,TARPRSM,TARRCTBLCK3,TARREC,TARSLABHOLE,TARTET
+         TARPBXN,TARPRSM,TARRCTBLK3,TARREC,TARRCTELL,TARSLABHOLE,TARTET
 
 ! Local variables:
 
@@ -58,6 +58,7 @@
 ! ELLIPSOID, 3
 ! ELLIPSO_2, 3
 ! ELLIPSO_3, 3
+! EL_IN_RCT, 6
 ! FROM_FILE, 0
 ! GAUSS_SPH, 6
 ! HEXGONPBC, 5
@@ -86,12 +87,12 @@
 
 !    SHPAR(1-10) = up to 10 parameters defining target geometry
 
-!    DX(1-3)= d_x/d, d_y/d, d_z/d for lattice, where d=(d_x*d_y*d_z)**(1
-!             is the effective lattice spacing, and d_x,d_y,d_z are latt
+!    DX(1-3)= d_x/d, d_y/d, d_z/d for lattice, where d=(d_x*d_y*d_z)**(1/3)
+!             is the effective lattice spacing, and d_x,d_y,d_z are lattice
 !             spacings in x,y,z directions
 
-!    MXNAT = limit on largest allowed value of NAT
-!    MXN3  = 3*MXNAT
+!    MXNAT0 = limit on largest allowed value of NAT0
+!    MXN3  = 3*MXNAT0
 !    IDVOUT = 1 to print out information on target shape
 !            -1 to suppress printing information on target shape
 !    CFLSHP = name of target shape file if CSHAPE='FROM_FILE' or
@@ -107,17 +108,17 @@
 !            = 2 for general anisotropic targets
 !    A1,A2   = two 3-vectors defining initial target orientation
 !    CDESCR  = string describing target
-!    NAT     = number of dipoles in target
-!    NAT3    = 3*NAT
-!    IXYZ(1-NAT,1-3)=integers fixing x,y,z coordinates of
+!    NAT0     = number of dipoles in target
+!    NAT03    = 3*NAT0
+!    IXYZ(1-NAT0,1-3)=integers fixing x,y,z coordinates of
 !              occupied sites in target
-!    ICOMP(1-NAT,1-3)=composition for E in x,y,z direction at each site
-!    BETADF(1-NAT)=angle specifying orientation of "Dielectric Frame"
-!                  for locations 1-NAT
-!    PHIDF(1-NAT)=angle specifying orientation of "Dielectric Frame"
-!                 for locations 1-NAT
-!    THETADF(1-NAT)=angle specifying orientation of "Dielectric Frame"
-!                   for locations 1-NAT
+!    ICOMP(1-NAT0,1-3)=composition for E in x,y,z direction at each site
+!    BETADF(1-NAT0)=angle specifying orientation of "Dielectric Frame"
+!                  for locations 1-NAT0
+!    PHIDF(1-NAT0)=angle specifying orientation of "Dielectric Frame"
+!                 for locations 1-NAT0
+!    THETADF(1-NAT0)=angle specifying orientation of "Dielectric Frame"
+!                   for locations 1-NAT0
 !    X0(1-3) = offset for IXYZ array.
 !              Defined so that dipole with IXYZ(J,1-3)=(IX,IY,IZ)
 !              is located at x_TF/(d*DX(1)) = IX+X0(1)
@@ -297,14 +298,23 @@
 !                   (had failed to set PYD and PZD)
 !                 * corrected handling of option ANIFILPBC
 !                   (had failed to set PYD and PZD)
+! 10.04.27 (BTD): * corrected typo in EXTERNAL statemnent:
+!                   TARRCTBLCK3 -> TARRCTBLK3
+!                   (thanks to Michel Devel for reporting this  on 10.04.27)
+! 11.10.18 (BTD): target_v4
+!                 add new target option
+!                 * EL_IN_RCT (ellipsoid embedded in rectangular block)
+! 12.02.08 (BTD): target_v5
+!                 * added IOSPH to REASHP for target option FRMFILPBC
 ! end history
 
 ! Copyright (C) 1993,1994,1995,1996,1997,1998,2000,2002,2003,2004,2005
-!               2006,2007,2008,2009,2010 B.T. Draine and P.J. Flatau
+!               2006,2007,2008,2009,2010,2011,2012
+!               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 !*** diagnostic
-!      write(0,*)'entered target, CSHAPE=',CSHAPE
+!      write(0,*)'target_v5 ckpt 0, CSHAPE=',CSHAPE
 !***
 ! initialize X0 to zero, because some target routines have not yet
 ! been upgraded to initialize X0
@@ -326,13 +336,13 @@
 ! Most targets have BETADF=0,PHIDF=0,THETADF=0 so initialize these
 ! before proceeding.
 
-      DO J=1,MXNAT
+      DO J=1,MXNAT0
          BETADF(J)=0._WP
       ENDDO
-      DO J=1,MXNAT
+      DO J=1,MXNAT0
          PHIDF(J)=0._WP
       ENDDO
-      DO J=1,MXNAT
+      DO J=1,MXNAT0
          THETADF(J)=0._WP
       ENDDO
 
@@ -342,19 +352,19 @@
       IANISO=0
 
 !*** diagnostic
-!      write(0,*)'target ckpt 1'
+!      write(0,*)'target_v5 ckpt 1'
 !***
 !-----------------------------------------------------------------------
 ! ANIELLIPS -> anisotropic ellipsoid
 
       IF(CSHAPE=='ANIELLIPS')THEN
          CALL TARELL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
 
 ! Dielectric constants 1,2,3 for E along directions x,y,z in Target Fram
 
          IANISO=1
-         DO J=1,NAT
+         DO J=1,NAT0
             ICOMP(J,1)=1
             ICOMP(J,2)=2
             ICOMP(J,3)=3
@@ -371,11 +381,12 @@
 
       ELSEIF(CSHAPE=='ANIFILPBC')THEN
 
-         CALL REASHP(CSHAPE,CFLSHP,IDVOUT,IDVSHP,A1,A2,DX,X0,BETADF,PHIDF,   &
-                     THETADF,CDESCR,MXNAT,NAT,IXYZ,ICOMP,MXN3,NAT3,NCOMP_NEED)
+         CALL REASHP(CSHAPE,CFLSHP,IDVOUT,IDVSHP,A1,A2,DX,X0,BETADF,PHIDF, &
+                     THETADF,CDESCR,MXNAT0,NAT0,IXYZ,ICOMP,MXN3,NAT03,     &
+                     NCOMP_NEED)
 
          IANISO=1
-         DO J=1,NAT
+         DO J=1,NAT0
             IF(BETADF(J)/=0.)IANISO=2
             IF(PHIDF(J)/=0.)IANISO=2
             IF(THETADF(J)/=0.)IANISO=2            
@@ -386,15 +397,16 @@
 !-----------------------------------------------------------------------
 ! ANIFRMFIL -> read list of occupied sites and composition and material
 !           orientation from file
-!           file CFLSHP must specify, for each dipole j=1-NAT
+!           file CFLSHP must specify, for each dipole j=1-NAT0
 !           IXYZ(j,1-3),ICOMP(j,1-3),betadf(j),phidf(j),thetadf(j)
 
       ELSEIF(CSHAPE=='ANIFRMFIL')THEN
 
          CALL REASHP(CSHAPE,CFLSHP,IDVOUT,IDVSHP,A1,A2,DX,X0,BETADF,PHIDF,   &
-                     THETADF,CDESCR,MXNAT,NAT,IXYZ,ICOMP,MXN3,NAT3,NCOMP_NEED)
+                     THETADF,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP,MXN3,NAT03, &
+                     NCOMP_NEED)
          IANISO=1
-         DO J=1,NAT
+         DO J=1,NAT0
             IF(BETADF(J)/=0.)IANISO=2
             IF(PHIDF(J)/=0.)IANISO=2
             IF(THETADF(J)/=0.)IANISO=2
@@ -409,15 +421,15 @@
 
       ELSEIF(CSHAPE=='ANI_ELL_2')THEN
          CALL TAR2EL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=1
-         J1=NAT/2
+         J1=NAT0/2
          DO J=1,J1
             ICOMP(J,1)=1
             ICOMP(J,2)=2
             ICOMP(J,3)=3
          ENDDO
-         DO J=J1+1,NAT
+         DO J=J1+1,NAT0
             ICOMP(J,1)=4
             ICOMP(J,2)=5
             ICOMP(J,3)=6
@@ -433,9 +445,9 @@
 
       ELSEIF(CSHAPE=='ANI_ELL_3')THEN
          CALL TAR3EL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=1
-         J1=NAT/3
+         J1=NAT0/3
          DO J=1,J1
             ICOMP(J,1)=1
             ICOMP(J,2)=2
@@ -446,7 +458,7 @@
             ICOMP(J,2)=5
             ICOMP(J,3)=6
          ENDDO
-         DO J=2*J1+1,NAT
+         DO J=2*J1+1,NAT0
             ICOMP(J,1)=7
             ICOMP(J,2)=8
             ICOMP(J,3)=9
@@ -458,7 +470,7 @@
 
       ELSEIF(CSHAPE=='ANIRCTNGL')THEN
          CALL TARANIREC(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                        MXNAT,NAT,IXYZ,ICOMP)
+                        MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=1
 
 !-----------------------------------------------------------------------
@@ -477,10 +489,10 @@
 ! 2010.02.06 (BTD) correction
 !         CALL TARRCTBLK3(A1,A2,SHPAR(1),SHPAR(3),SHPAR(4),SHPAR(2),SHPAR(5), &
 !                         SHPAR(5),1._WP,1._WP,1._WP,DX,X0,CDESCR,IOSHP,      &
-!                         MXNAT,NAT,IXYZ,ICOMP)
+!                         MXNAT0,NAT0,IXYZ,ICOMP)
          CALL TARRCTBLK3(A1,A2,SHPAR(1),SHPAR(2),1._WP,SHPAR(3),SHPAR(5),  &
                          1._WP,SHPAR(4),SHPAR(5),1._WP,DX,X0,CDESCR,IOSHP, &
-                         MXNAT,NAT,IXYZ,ICOMP)
+                         MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(6)
          PZD=1._WP
@@ -491,7 +503,7 @@
 
       ELSEIF(CSHAPE=='CONELLIPS')THEN
          CALL TARCEL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -499,15 +511,15 @@
 
       ELSEIF(CSHAPE=='CYLINDER1')THEN
          CALL TARCYL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
 ! CYLNDRCAP -> homogeneous, isotropic cylinder with hemispherical caps
 
       ELSEIF(CSHAPE=='CYLNDRCAP')THEN
-         CALL TARCYLCAP(A1,A2,SHPAR(1),SHPAR(2),DX,X0,CDESCR,IOSHP,MXNAT,NAT, &
-                        IXYZ,ICOMP)
+         CALL TARCYLCAP(A1,A2,SHPAR(1),SHPAR(2),DX,X0,CDESCR,IOSHP,MXNAT0, &
+                        NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -517,7 +529,7 @@
 
       ELSEIF(CSHAPE=='CYLNDRPBC')THEN
          CALL TARCYL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
 
 ! set target axis a1 = (1,0,0) in TF
 !                 a2 = (0,1,0) in TF
@@ -549,7 +561,7 @@
 !                 a2 = (0,1,0) in TF
 
          CALL TARPBXN(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(7)
          PZD=SHPAR(8)
@@ -568,7 +580,7 @@
 !                 a2 = (0,1,0) in TF
 
          CALL TARPBXN(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),0._WP,SHPAR(4), &
-                     SHPAR(5),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     SHPAR(5),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !!-----------------------------------------------------------------------
@@ -586,8 +598,8 @@
 ! set target axis a1 = (1,0,0) in TF
 !                 a2 = (0,1,0) in TF
 
-         CALL TARPBXN(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),0._WP,SHPAR(4), &
-                      SHPAR(5),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+         CALL TARPBXN(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),0._WP,SHPAR(4),  &
+                      SHPAR(5),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(6)
          PZD=SHPAR(7)
@@ -640,27 +652,41 @@
          XYZB(2,13)=1
          XYZB(3,13)=2
 ! diagnostic
-!         write(0,*)'target ckpt 10, blksiz=',blksiz
+!         write(0,*)'target_v5 ckpt 10, blksiz=',blksiz
 !
          CALL TARBLOCKS(A1,A2,DX,NBLOCKS,BLKSIZ,XYZB,X0,IPRINAX,IOSHP, &
-                        CDESCR,MXNAT,NAT,IXYZ,ICOMP)
+                        CDESCR,MXNAT0,NAT0,IXYZ,ICOMP)
 ! diagnostic
-!         write(0,*)'target ckpt 11, nat=',nat
+!         write(0,*)'target_v5 ckpt 11, nat=',nat
 !
          IANISO=0
          CDESCR='13-cube target used by Draine & Weingartner 1996'
+
+! EL_IN_RCT -> homogeneous, isotropic, ellipsoidal target
+!              embedded in a rectangular block
+
+      ELSEIF(CSHAPE=='EL_IN_RCT')THEN
+!*** diagnostic
+         write(0,*)'target_v5 ckpt 19'
+!***
+         CALL TARRCTELL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
+                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
+!*** diagnostic
+         write(0,*)'target_v5 ckpt 19.1'
+!***
+         IANISO=0
 
 !-----------------------------------------------------------------------
 ! ELLIPSOID -> homogeneous, isotropic, ellipsoidal target
 
       ELSEIF(CSHAPE=='ELLIPSOID')THEN
 !*** diagnostic
-!         write(0,*)'target ckpt 20'
+!         write(0,*)'target_v5 ckpt 20'
 !***
          CALL TARELL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
 !*** diagnostic
-!         write(0,*)'target ckpt 21'
+!         write(0,*)'target_v5 ckpt 21'
 !***
          IANISO=0
 
@@ -670,7 +696,7 @@
 
       ELSEIF(CSHAPE=='ELLIPSO_2')THEN
          CALL TAR2EL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -681,12 +707,12 @@
 
       ELSEIF(CSHAPE=='ELLIPSO_3')THEN
          CALL TAR3EL(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
 ! FROM_FILE -> read list of locations IXYZ(J,1-3) and compositions 
-!              ICOMP(J,1-3) for occupied sites J=1-NAT
+!              ICOMP(J,1-3) for occupied sites J=1-NAT0
 !              from file CFLSHP
 !              REASHP should leave BETADF,PHIDF,THETADF untouched
 !              If target is anisotropic, principal axes of dielectric tensor
@@ -694,20 +720,25 @@
 
       ELSEIF(CSHAPE=='FROM_FILE')THEN
          CALL REASHP(CSHAPE,CFLSHP,IDVOUT,IDVSHP,A1,A2,DX,X0,BETADF,PHIDF,   &
-                     THETADF,CDESCR,MXNAT,NAT,IXYZ,ICOMP,MXN3,NAT3,NCOMP_NEED)
+                     THETADF,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP,MXN3,NAT03, &
+                     NCOMP_NEED)
          IANISO=1
 
 !-----------------------------------------------------------------------
 ! FRMFILPBC -> read list of locations IXYZ(J,1-3) and compositions
-!              ICOMP(J,1-3) for occupied sites J=1-NAT in TUC
+!              ICOMP(J,1-3) for occupied sites J=1-NAT0 in TUC
 !              from file CFLSHP
 !              REASHP should leave BETADF,PHIDF,THETADF unchanged
 !              If target is anisotropic, principal axes of dielectric
 !              tensor must be aligned with x,y,z axes in target frame.
 
       ELSEIF(CSHAPE=='FRMFILPBC')THEN
+! diagnostic
+!         write(0,*)'target_v5 ckpt 25, mxn3=',mxn3
+!*** 
          CALL REASHP(CSHAPE,CFLSHP,IDVOUT,IDVSHP,A1,A2,DX,X0,BETADF,PHIDF,   &
-                     THETADF,CDESCR,MXNAT,NAT,IXYZ,ICOMP,MXN3,NAT3,NCOMP_NEED)
+                     THETADF,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP,MXN3,NAT03, &
+                     NCOMP_NEED)
          IANISO=1
          PYD=SHPAR(1)
          PZD=SHPAR(2)
@@ -728,9 +759,9 @@
 !*** diagnostic
 !         WRITE(0,*)'about to call targspher with shpar(1)=',SHPAR(1)
 !***
-         CALL TARGSPHER(SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5)   ,    &
-                        SHPAR(6),A1,A2,DX,X0,CFLSHP,CDESCR,IOSHP,MXNAT,NAT, &
-                        IXYZ,ICOMP)
+         CALL TARGSPHER(SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
+                        SHPAR(6),A1,A2,DX,X0,CFLSHP,CDESCR,IOSHP,     &
+                        MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -740,7 +771,7 @@
 
       ELSEIF(CSHAPE=='HEXGONPBC')THEN
          CALL TARHEX(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
 
 ! set target axis a1 = (1,0,0) in TF
 !                 a2 = (0,1,0) in TF
@@ -761,7 +792,7 @@
 
       ELSEIF(CSHAPE=='HEX_PRISM')THEN
          CALL TARHEX(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -776,9 +807,9 @@
 ! SHPAR(7) = fraction f4 of slab occupied by material 4
 
       ELSEIF(CSHAPE=='LAYRDSLAB')THEN
-         CALL TARLYRSLAB(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5),  &
-                         SHPAR(6),SHPAR(7),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ, &
-                         ICOMP)
+         CALL TARLYRSLAB(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
+                         SHPAR(6),SHPAR(7),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,   &
+                         IXYZ,ICOMP)
          IANISO=0
 
 ! slab has dimensions a,b,c in x,y,z dimensions
@@ -810,9 +841,9 @@
 ! SHPAR(9) = (repeat length in z direction)/[d*DX(3)]
 
       ELSEIF(CSHAPE=='LYRSLBPBC')THEN
-         CALL TARLYRSLAB(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5),  &
-                         SHPAR(6),SHPAR(7),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ, &
-                         ICOMP)
+         CALL TARLYRSLAB(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
+                         SHPAR(6),SHPAR(7),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,   &
+                         IXYZ,ICOMP)
 
 ! sets target axis a1 = (1,0,0) in TF
 !                  a2 = (0,1,0) in TF
@@ -848,7 +879,7 @@
          ENDDO
          CLOSE(IDVSHP)
          CALL TARBLOCKS(A1,A2,DX,NBLOCKS,BLKSIZ,XYZB,X0,IPRINAX,IOSHP,CDESCR, &
-                        MXNAT,NAT,IXYZ,ICOMP)
+                        MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -856,7 +887,7 @@
 
       ELSEIF(CSHAPE=='RCTGLPRSM')THEN
          CALL TARREC(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                     MXNAT,NAT,IXYZ,ICOMP)
+                     MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -872,7 +903,7 @@
 
       ELSEIF(CSHAPE=='RCTGL_PBC')THEN
          CALL TARREC(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),DX,X0,CDESCR,IOSHP, &
-                    MXNAT,NAT,IXYZ,ICOMP)
+                    MXNAT0,NAT0,IXYZ,ICOMP)
 
 ! note: TARREC sets target axis a1 = (1,0,0) in TF
 !                               a2 = (0,1,0) in TF
@@ -897,7 +928,7 @@
          ELSEIF(CSHAPE=='RCTGLBLK3')THEN
             CALL TARRCTBLK3(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),       &
                             SHPAR(5),SHPAR(6),SHPAR(7),SHPAR(8),SHPAR(9),DX, &
-                            X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                            X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
             IANISO=0
          
 !-----------------------------------------------------------------------
@@ -916,7 +947,7 @@
       ELSEIF(CSHAPE=='RCTG_RCTG')THEN
 
          CALL TARRECREC(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -937,10 +968,10 @@
 !     target axis a1 = (1,0,0) in TF
 !                 a2 = (0,1,0) in TF
 !*** diagnostic
-!         write(0,*)'in target, about to call tarrecrec...'
+!         write(0,*)'in target_v5, about to call tarrecrec...'
 !***
          CALL TARRECREC(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(7)
          PZD=SHPAR(8)
@@ -957,10 +988,10 @@
 
       ELSEIF(CSHAPE=='SLAB_HOLE')THEN
 !*** diagnostic
-!         write(0,*)'target ckpt 30, target option SLAB_HOLE'
+!         write(0,*)'target_v5 ckpt 30, target option SLAB_HOLE'
 !
          CALL TARSLABHOLE(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4), &
-                          DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                          DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -984,10 +1015,10 @@
 
       ELSEIF(CSHAPE=='SLBHOLPBC')THEN
 ! diagnostic
-!         write(0,*)'target ckpt 40 SLBHOLPBC'
+!         write(0,*)'target_v5 ckpt 40 SLBHOLPBC'
 !
          CALL TARSLABHOLE(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4), &
-                          DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                          DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(5)
          PZD=SHPAR(6)
@@ -1005,10 +1036,10 @@
 
       ELSEIF(CSHAPE=='SPHERES_N')THEN
 ! diagnostic
-!         write(0,*)'target ckpt 50 spheres_n'
+!         write(0,*)'target_v5 ckpt 50 spheres_n'
 !
          CALL TARNSP(A1,A2,SHPAR(1),SHPAR(2),DX,X0,CFLSHP,CDESCR,IDVSHP, &
-                     IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -1022,22 +1053,22 @@
 
       ELSEIF(CSHAPE=='SPHRN_PBC')THEN
          CALL TARNAS(A1,A2,SHPAR(1),0._WP,DX,X0,BETADF,PHIDF,THETADF,CFLSHP, &
-                    CDESCR,IDVSHP,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     CDESCR,IDVSHP,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
 ! diagnostic
-!         write(0,*)'target ckpt 60 - sphrn_pbc'
+!         write(0,*)'target_v5 ckpt 60 - sphrn_pbc'
 !         write(0,*)'                x0(1-3)=',x0
 !
          IANISO=0.
          PI=4._WP*ATAN(1._WP)
-         PYD=SHPAR(2)*(3._WP*REAL(NAT,KIND=WP)/(4._WP*PI))**(1._WP/3._WP)/DX(2)
-         PZD=SHPAR(3)*(3._WP*REAL(NAT,KIND=WP)/(4._WP*PI))**(1._WP/3._WP)/DX(3)
+         PYD=SHPAR(2)*(3._WP*REAL(NAT0,KIND=WP)/(4._WP*PI))**(1._WP/3._WP)/DX(2)
+         PZD=SHPAR(3)*(3._WP*REAL(NAT0,KIND=WP)/(4._WP*PI))**(1._WP/3._WP)/DX(3)
 
 !-----------------------------------------------------------------------
 ! SPHROID_2 -> two touching spheroids
 
       ELSEIF(CSHAPE=='SPHROID_2')THEN
          CALL TAR2SP(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
 
 !-----------------------------------------------------------------------
 ! SPH_ANI_N -> Multisphere target of general anisotropic composition.
@@ -1047,9 +1078,9 @@
       ELSEIF(CSHAPE=='SPH_ANI_N')THEN
 
          CALL TARNAS(A1,A2,SHPAR(1),SHPAR(2),DX,X0,BETADF,PHIDF,THETADF, &
-                     CFLSHP,CDESCR,IDVSHP,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                     CFLSHP,CDESCR,IDVSHP,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=1
-         DO J=1,NAT
+         DO J=1,NAT0
             IF(BETADF(J)/=0.)IANISO=2
             IF(PHIDF(J)/=0.)IANISO=2
             IF(THETADF(J)/=0.)IANISO=2
@@ -1064,13 +1095,13 @@
 !      ELSEIF(CSHAPE=='TARSLBLIN')THEN
 
 !         CALL TARSLBLIN(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
-!                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+!                        SHPAR(6),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
 
 !-----------------------------------------------------------------------
 ! TETRAHDRN -> homogeneous, isotropic tetrahedron
 
       ELSEIF(CSHAPE=='TETRAHDRN')THEN
-         CALL TARTET(A1,A2,SHPAR(1),DX,X0,CDESCR,IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+         CALL TARTET(A1,A2,SHPAR(1),DX,X0,CDESCR,IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -1090,7 +1121,7 @@
       ELSEIF(CSHAPE=='TRILYRPBC')THEN
          CALL TARRCTBLK3(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),SHPAR(5), &
                          SHPAR(6),SHPAR(7),SHPAR(8),SHPAR(9),DX,X0,CDESCR,   &
-                         IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                         IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
          PYD=SHPAR(10)
          PZD=SHPAR(11)
@@ -1100,7 +1131,7 @@
 
       ELSEIF(CSHAPE=='TRNGLPRSM')THEN
          CALL TARPRSM(A1,A2,SHPAR(1),SHPAR(2),SHPAR(3),SHPAR(4),DX,X0,CDESCR, &
-                      IOSHP,MXNAT,NAT,IXYZ,ICOMP)
+                      IOSHP,MXNAT0,NAT0,IXYZ,ICOMP)
          IANISO=0
 
 !-----------------------------------------------------------------------
@@ -1111,12 +1142,12 @@
 ! Assume component 2 to be dielectric const. for E perp. c axis
 
       ELSEIF(CSHAPE=='UNIAXICYL')THEN
-         CALL TARCYL(A1,A2,SHPAR(1),SHPAR(2),1._WP,DX,X0,CDESCR,IOSHP,MXNAT, &
-                     NAT,IXYZ,ICOMP)
+         CALL TARCYL(A1,A2,SHPAR(1),SHPAR(2),1._WP,DX,X0,CDESCR,IOSHP,MXNAT0, &
+                     NAT0,IXYZ,ICOMP)
 
 ! Set composition
 
-         DO J=1,NAT
+         DO J=1,NAT0
             ICOMP(J,1)=1
             ICOMP(J,2)=2
             ICOMP(J,3)=2
@@ -1137,16 +1168,16 @@
 
 ! Check to see that arrays are large enough
 
-      IF(NAT>MXNAT)CALL ERRMSG('FATAL','TARGET',     &
-        ' MXNAT < NAT; must increase MXNAT in DDSCAT')
+      IF(NAT0>MXNAT0)CALL ERRMSG('FATAL','TARGET',     &
+        ' MXNAT0 < NAT0; must increase MXNAT0 in DDSCAT')
 
 ! Write out target description
 
-      WRITE(IDVOUT,FMT=9010)CDESCR,NAT
+      WRITE(IDVOUT,FMT=9010)CDESCR,NAT0
 
 ! Before returning, compute:
 
-      NAT3=3*NAT
+      NAT03=3*NAT0
       RETURN
 9010  FORMAT(' >TARGET:',A,/,6X,I9,' = NAT0 = number of dipoles in target')
     END SUBROUTINE TARGET

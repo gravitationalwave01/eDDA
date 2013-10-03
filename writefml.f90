@@ -1,19 +1,22 @@
-    SUBROUTINE WRITEFML(JPBC,IORI,IORTH,IRAD,IWAV,MXCOMP,MXSCA,NAT0,  &
-                        NAVG,NCOMP,NSCAT,CALPHA,CDESCR,CMDFFT,CMDFRM, &
-                        CSHAPE,CSTAMP,AEFF,AK1,AKR,BETAD,PHID,THETAD, &
-                        TOL,WAVE,XX,A1,A2,PHIN,THETAN,CXE01,CXE01R,   &
-                        CXE02,CXE02R,CXEPS,CXRFR,CXF11,CXF21,CXF12,   &
-                        CXF22,PYD,PZD)
+    SUBROUTINE WRITEFML(JPBC,IORI,IORTH,IRAD,IWAV,MXCOMP,MXSCA, &
+                        NAT0,NAVG,NCOMP,NSCAT,NORICHAR,CALPHA,  &
+                        CDESCR,CMDFFT,CMDSOL,CMDFRM,CSHAPE,     &
+                        CSTAMP,AEFF,AK1,AKR,NAMBIENT,BETAD,     &
+                        PHID,THETAD,TOL,WAVE,XX,A1,A2,PHIN,     &
+                        THETAN,CXE01,CXE01R,CXE02,              &
+                        CXE02R,CXEPS,CXRFR,CXF11,CXF21,CXF12,   &
+                        CXF22,PYD,PZD)                          !
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
 ! Scalar Arguments ..
 
-      REAL(WP) :: AEFF,AK1,BETAD,PHID,PYD,PZD,THETAD,TOL,WAVE,XX
-      INTEGER :: IORI,IORTH,IRAD,IWAV,JPBC,MXCOMP,MXSCA,NAT0,NAVG,NCOMP,NSCAT
+      REAL(WP) :: AEFF,AK1,BETAD,NAMBIENT,PHID,PYD,PZD,THETAD,TOL,WAVE,XX
+      INTEGER :: IORI,IORTH,IRAD,IWAV,JPBC,MXCOMP,MXSCA, &
+                 NAT0,NAVG,NCOMP,NORICHAR,NSCAT          !
 
-      CHARACTER :: CALPHA*6,CMDFFT*6,CMDFRM*6, &
-        CSHAPE*9,CFLFML*16,CSTAMP*26,CDESCR*67
+      CHARACTER :: CALPHA*6,CMDFFT*6,CMDFRM*6, CMDSOL*6, &
+                   CSHAPE*9,CFLFML*19,CSTAMP*26,CDESCR*67
 
 ! Array Arguments ..
 
@@ -49,6 +52,8 @@
 ! Intrinsic Functions:
 
       INTRINSIC CONJG,SQRT
+      DATA CFLFML/'                   '/
+      SAVE CFLFML
 
 !***********************************************************************
 ! Subroutine WRITEFML
@@ -60,9 +65,14 @@
 ! 07.08.31 (BTD) created using WRITESCA as template
 ! 08.06.30 (BTD) changed normalization factor CXFAC for case JPBC=3
 !                [target periodic in y and z directions]
+! 10.05.09 (BTD) added CMDSOL to argument list
+! 11.08.30 (BTD) v7.2.2 added NAMBIENT to argument list
+! 13.03.22 (BTD) v7.3.0
+!                * CFLFML: initialize and SAVE
+!                * extend to CHARACTER*19 to allow up to 1e6 orientations
 ! end history
 
-! Copyright (C) 2007,2008
+! Copyright (C) 2007,2008,2010,2011,2013
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -85,12 +95,19 @@
       ELSE
         CFRAME='????????'
       ENDIF
-
-      CALL NAMER2(IWAV,IRAD,IORI,CFLFML)
+!*** diagnostic
+!      write(0,*)'writefml ckpt 1' 
+!      write(0,*)'   iwav,irad,iori=',iwav,irad,iori
+!      write(0,*)'   norichar=',norichar
+!***
+      CALL NAMER2(IWAV-1,IRAD-1,IORI-1,NORICHAR,CFLFML)
+!*** diagnostic
+!      write(0,*)'writefml ckpt 1, cflfml=',cflfml
+!***
       OPEN (UNIT=8,FILE=CFLFML,STATUS='UNKNOWN')
-      WRITE(8,FMT=9030)CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,NAT0
+      WRITE(8,FMT=9030)CSTAMP,CDESCR,CMDSOL,CALPHA,CSHAPE,NAT0
 
-      WRITE(8,FMT=9032)AEFF,WAVE,XX
+      WRITE(8,FMT=9032)AEFF,WAVE,XX,NAMBIENT
       DO J=1,NCOMP
          MKD=(4._WP*PI/(3._WP*NAT0))**(1._WP/3._WP)* &
              SQRT(REAL(CXRFR(J)*CONJG(CXRFR(J))))*XX
@@ -167,9 +184,11 @@
 !     &       3F8.5,' = normalized lattice spacings dx,dy,dz')
 9031  FORMAT ('n= (',F7.4,' , ',F7.4,'),  eps.= (',F8.4,' , ',F7.4, &
         ')  |m|kd=',0P,F8.4,' for subs.',I2)
-9032  FORMAT ('  AEFF=',F10.5,' =',' effective radius (physical units)',/,  &
-        '  WAVE=',F10.5,' = wavelength (physical units)',/,'K*AEFF=',F10.5, &
-        ' = 2*pi*aeff/lambda')
+9032  FORMAT(                                                         &
+         '  AEFF=',F11.5,' =',' effective radius (physical units)',/, &
+         '  WAVE=',F11.5,' = vacuum wavelength (physical units)',/,   &
+         'K*AEFF=',F11.5,' = 2*pi*aeff/lambda',/,                     &
+         'NAMBIENT=',F9.5,' = refractive index of ambient medium')
 9033  FORMAT ('   TOL=',1P,E10.3,' = error tolerance for CCG method'/ &
         '  NAVG=',I6,' = (theta,phi) values used in comp. of Qsca,g'/ &
         0P,'(',F8.5,2F9.5,') = target axis A1 in Target Frame'/       &

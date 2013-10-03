@@ -84,7 +84,7 @@
 
     SUBROUTINE MATVEC(CXX,CXY,IPAR)
       USE DDPRECISION,ONLY : WP
-      USE DDCOMMON_1,ONLY : AKR,DX
+      USE DDCOMMON_1,ONLY : AK_TF,DX
       USE DDCOMMON_2,ONLY : CXADIA
       USE DDCOMMON_3,ONLY : CXZC
       USE DDCOMMON_4,ONLY : CXZW
@@ -159,8 +159,15 @@
 !                   to INTEGER :: IPAR(*)
 !                   NB: dummy argument IPAR is not used
 ! 08.04.20 (BTD): * change notation: ALPHA -> GAMMA
+! 11.11.15 (BTD): v7.1.1
+!                 * change notation: AKR -> AK_TF
+! 12.08.09 (IYW): v7.3
+!                 * add DIPINT to arg list of CPROD
+! 12.08.11 (BTD): * remove DIPINT from arg list of CPROD
+!                   IDIPINT is now passed to ESELF through module
+!                   DDCOMMON_0
 ! end history
-! Copyright (C) 1993,1997,2000,2004,2005,2006,2007,2008
+! Copyright (C) 1993,1997,2000,2004,2005,2006,2007,2008,2011,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -168,7 +175,7 @@
 !      write(0,*)'matvec ckpt 1, IPBC=',IPBC
 !      write(0,*)'               about to call CPROD with CWHAT=N'
 !***
-      CALL CPROD(AKR,GAMMA,DX,CMDFFT,'N',CXADIA,CXAOFF,CXX,CXY,CXZC,CXZW,     &
+      CALL CPROD(AK_TF,GAMMA,DX,CMDFFT,'N',CXADIA,CXAOFF,CXX,CXY,CXZC,CXZW,   &
                  IDVOUT,IOCC,MXN3F,MXNATF,MXNXF,MXNYF,MXNZF,NAT,NAT0,NAT3,NX, &
                  NY,NZ,IPBC,PYD,PZD)
 !*** diagnostic
@@ -181,7 +188,7 @@
 
     SUBROUTINE CMATVEC(CXX,CXY,IPAR)
       USE DDPRECISION,ONLY: WP
-      USE DDCOMMON_1,ONLY: AKR,DX
+      USE DDCOMMON_1,ONLY: AK_TF,DX
       USE DDCOMMON_2,ONLY: CXADIA
       USE DDCOMMON_3,ONLY: CXZC
       USE DDCOMMON_4,ONLY: CXZW
@@ -236,15 +243,17 @@
 ! 08.03.11 (BTD): v7.0.5:
 !                 * added ALPHA to DDCOMMON_6
 ! 08.04.20 (BTD): * changed notation: ALPHA -> GAMMA
+! 11.11.15 (BTD): v7.1.1:
+!                 * changed notation: AKR -> AK_TF
 ! end history
-! Copyright (C) 1993,1997,2000,2004,2005,2006,2007,2008
+! Copyright (C) 1993,1997,2000,2004,2005,2006,2007,2008,2011
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 !*** diagnostic
 !      write(0,*)'entered cmatvec with IPBC=',IPBC
 !***
-      CALL CPROD(AKR,GAMMA,DX,CMDFFT,'C',CXADIA,CXAOFF,CXX,CXY,CXZC,CXZW,     &
+      CALL CPROD(AK_TF,GAMMA,DX,CMDFFT,'C',CXADIA,CXAOFF,CXX,CXY,CXZC,CXZW,   &
                  IDVOUT,IOCC,MXN3F,MXNATF,MXNXF,MXNYF,MXNZF,NAT,NAT0,NAT3,NX, &
                  NY,NZ,IPBC,PYD,PZD)
       RETURN
@@ -252,8 +261,8 @@
 
 !=======================================================================
 
-      SUBROUTINE CPROD(AKR,GAMMA,DX,CMETHD,CWHAT,CXADIA,CXAOFF,CXX,CXY,CXZC, &
-                       CXZW,IDVOUT,IOCC,MXN3,MXNAT,MXNX,MXNY,MXNZ,NAT,NAT0,  &
+      SUBROUTINE CPROD(AK_TF,GAMMA,DX,CMETHD,CWHAT,CXADIA,CXAOFF,CXX,CXY,CXZC, &
+                       CXZW,IDVOUT,IOCC,MXN3,MXNAT,MXNX,MXNY,MXNZ,NAT,NAT0,    &
                        NAT3,NX,NY,NZ,IPBC,PYD,PZD)
       USE DDPRECISION,ONLY : WP
        
@@ -268,7 +277,7 @@
          IOCC(MXNAT)
       REAL(WP) :: GAMMA,PYD,PZD
       REAL(WP) :: &
-         AKR(3),  &
+         AK_TF(3),  &
          DX(3)
       COMPLEX(WP) ::                                                 &
          CXADIA(MXN3),                                               &
@@ -291,7 +300,7 @@
 ! Subroutine CPROD
 
 ! Given:
-!   AKR(1-3)= k(1-3)*d , where k=k vector in vacuo
+!   AK_TF(1-3)= k(1-3)*d , where k=k vector in vacuo
 !                       d=effective lattice spacing=(dx*dy*dz)**(1/3)
 !   GAMMA  = parameter controlling PBC summations over replica dipoles
 !            interaction is suppressed by factor exp(-(gamma*k*r)^4)
@@ -327,6 +336,8 @@
 !   NAT3        = 3*NAT
 !   NX,NY,NZ    = extended target size is (NX*DX(1)) by (NY*DX(2)) by
 !                 (NZ*DX(3))
+!   IPBC        = 0 to do isolated target
+!               = 1 to use periodic boundary conditions
 !   PYD         = 0. to do isolated target
 !               = (periodicity in y direction)/d(2) for periodic b.c.
 !   PZD         = 0. to do isolated target
@@ -384,20 +395,29 @@
 ! 08.04.20 (BTD): * changed notation: ALPHA -> GAMMA
 ! 08.05.12 (BTD): v7.0.6
 !                 * added calls to TIMEIT to time ESELF
+! 11.11.15 (BTD): v7.1.1
+!                 * changed notation: AKR -> AK_TF
+! 12.07.06 (BTD): v7.2.3
+!                 * edited comments
+! 12.08.09 (IYW): v7.3
+!                 * added DIPINT to arg list of CPROD and ESELF
+! 12.08.11 (BTD): * removed DIPINT from arg list of CPROD and ESELF
+!                   IDIPINT is now passed to ESELF through module
+!                   DDCOMMON_0
 ! end history
-! Copyright (C) 1993,1997,1998,2000,2004,2005,2006,2007,2008
+! Copyright (C) 1993,1997,1998,2000,2004,2005,2006,2007,2008,2011,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !-----------------------------------------------------------------------
 !*** diagnostic
-!      write(0,*)'cprod ckpt 1 with nx,ny,nz,ipbc=',nx,ny,nz,ipbc
-!      write(0,*)'              cwhat=',cwhat
+!      write(0,*)'cprod_v2 ckpt 1 with nx,ny,nz,ipbc=',nx,ny,nz,ipbc
+!      write(0,*)'                cwhat=',cwhat
 !***
 
-      AKD=SQRT(AKR(1)*AKR(1)+AKR(2)*AKR(2)+AKR(3)*AKR(3))
+      AKD=SQRT(AK_TF(1)*AK_TF(1)+AK_TF(2)*AK_TF(2)+AK_TF(3)*AK_TF(3))
 
 !*** diagnostic
-!      write(0,*)' in cprod, akd=',akd
+!      write(0,*)'cprod_v2 ckpt 1.5 akd=',akd
 !***
 ! We assume that input vector CXX has zeroes for elements corresponding
 ! to vacuum sites.
@@ -408,17 +428,28 @@
 !        CXX(1-NAT3) = polarizations
 
 !*** diagnostic
-!         write(0,*)'cprod ckpt 2: about to call eself from cprod'
+!         write(0,*)'cprod_v2 ckpt 2: about to call eself from cprod'
+!         write(0,*)'   j     cxpol(j)'
+!         do j1=1,nat3
+!            write(0,fmt='(i4,2f10.3)')j1,cxx(j1)
+!         enddo
+!***
 !***
 ! 08.10.02 suppress this...
 !         CALL TIMEIT('ESELFCP',DTIME)
-         CALL ESELF(CMETHD,CXX,NX,NY,NZ,IPBC,GAMMA,PYD,PZD,AKR,AKD,DX, &
-                    CXZC,CXZW,CXY)
+         CALL ESELF(CMETHD,CXX,NX,NY,NZ,IPBC,GAMMA,PYD,PZD,AK_TF,AKD, &
+                    DX,CXZC,CXZW,CXY)
+
 ! 08.10.02 suppress this...
 !         CALL TIMEIT('ESELFCP',DTIME)
 
 !*** diagnostic
-!         write(0,*)'cprod ckpt 3'
+!         write(0,*)'cprod_v2 ckpt 3'
+!         write(0,*)'   j     cxe(j)'
+!         do j1=1,nat3
+!            write(0,fmt='(i4,2f10.3)')j1,cxy(j1)
+!         enddo
+!***
 !***
 !        CXY(1-NAT3) is now Efield produced by other dipoles (including
 !                    replica dipoles if PYZ or PZD are nonzero)
@@ -445,7 +476,7 @@
          ENDDO
 
 !*** diagnostic
-!        write(0,*)'in cprod ckpt 700, check cxy for NaN...'
+!        write(0,*)'cprod ckpt 700, check cxy for NaN...'
 !        do j1=1,nat3
 !           if(.not.(abs(cxy(j1))>=0.d0))then
 !              write(0,*)'j1=',j1,' cxy(j1)=',cxy(j1)
@@ -466,7 +497,7 @@
             CXY(J3)=CXY(J3)+CXAOFF(J1)*CXX(J2)+CXAOFF(J2)*CXX(J1)
          ENDDO
 !*** diagnostic
-!        write(0,*)'in cprod ckpt 701, check cxy for NaN...'
+!        write(0,*)'cprod ckpt 701, check cxy for NaN...'
 !        do j1=1,nat3
 !           if(.not.(abs(cxy(j1))>=0.d0))then
 !              write(0,*)'j1=',j1,' cxy(j1)=',cxy(j1)
@@ -485,8 +516,8 @@
 
 !***********************************************************************
 
-         CALL ESELF(CMETHD,CXX,NX,NY,NZ,IPBC,GAMMA,PYD,PZD,AKR,AKD,DX, &
-                    CXZC,CXZW,CXY)
+         CALL ESELF(CMETHD,CXX,NX,NY,NZ,IPBC,GAMMA,PYD,PZD, &
+                    AK_TF,AKD,DX,CXZC,CXZW,CXY)
 
 !***********************************************************************
 
@@ -540,7 +571,7 @@
       IF(NAT0<NAT)CALL NULLER(CXY,IOCC,MXNAT,MXN3,NAT)
 
 !*** diagnostic
-!      write(0,*)'in cprod, ckpt 707, check xy for NaN'
+!      write(0,*)'cprod ckpt 707, check xy for NaN'
 !      j2=0
 !      do j1=1,nat3
 !         if(.not.(abs(cxy(j1))>=0.d0))then

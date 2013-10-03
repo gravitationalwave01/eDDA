@@ -1,6 +1,9 @@
       SUBROUTINE TIMEIT(CMSGTM,DTIME)
       USE DDPRECISION,ONLY: WP
       IMPLICIT NONE
+      CHARACTER :: CMSGTM*(*)
+      REAL(WP) :: DTIME
+
 !***********************************************************************
 ! Subroutine TIMEIT
 !
@@ -31,9 +34,6 @@
 ! Copyright (C) 1993,1994,1995,2004,2007 B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !=======================================================================
-      CHARACTER :: CMSGTM*(*)
-      REAL(WP) :: DTIME
-
 ! External system calls:
 
 !     EXTERNAL CPU_TIME

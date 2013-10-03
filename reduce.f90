@@ -4,13 +4,13 @@
 
 ! Arguments:
 
-      INTEGER :: MXN3, MXNAT, NAT, NAT0
+      INTEGER :: MXN3,MXNAT,NAT,NAT0
       INTEGER*2 :: IOCC(MXNAT)
-      COMPLEX (WP) :: CXV(MXN3)
+      COMPLEX(WP) :: CXV(MXN3)
 
 ! Local variables:
 
-      INTEGER :: J, JOC, M
+      INTEGER :: J,JOC,M
 
 !***********************************************************************
 ! Given:
