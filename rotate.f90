@@ -1,6 +1,5 @@
     SUBROUTINE ROTATE(A1,A2,AK1,CXE01,CXE02,BETA,THETA,PHI,EN0R,CXE01R,CXE02R, &
-        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R,CENTER,CenterX0,CenterX0R,RM2) 
-        !CENTER and CenterX0 added by SMC 14.5.13
+        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R,RM2) 
       USE DDPRECISION, ONLY : WP
       IMPLICIT NONE
 
@@ -9,8 +8,7 @@
       INTEGER :: MXSCA, NSCAT
       REAL (WP) :: AK1, BETA, THETA, PHI
       REAL (WP) :: A1(3), A2(3), AKSR(3,MXSCA), EM1(3,MXSCA), EM1R(3,MXSCA), &
-        EM2(3,MXSCA), EM2R(3,MXSCA), EN0R(3), ENSC(3,MXSCA), CENTER(3), CenterX0(3), CenterX0R(3)
-        !CenterX0 added by SMC 14.5.13
+        EM2(3,MXSCA), EM2R(3,MXSCA), EN0R(3), ENSC(3,MXSCA)
       COMPLEX (WP) :: CXE01(3), CXE02(3), CXE01R(3), CXE02R(3)
 
 ! Local variables
@@ -186,9 +184,6 @@
 
       CALL PROD3(RM2,VEC,EN0R)
 
-! Electron beam coordinate vector added by SMC 14.5.13
-
-      CALL PROD3(RM2,CenterX0,CenterX0R)
 
 ! Incident polarization vectors:
 

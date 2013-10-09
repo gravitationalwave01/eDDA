@@ -236,6 +236,7 @@
       X0(2)=X0(2)+REAL(IYMIN-1-IPNF(3),KIND=WP)
       X0(3)=X0(3)+REAL(IZMIN-1-IPNF(5),KIND=WP)
 
+
 !*** diagnostic
 !      write(0,*)'extend ckpt 3'
 !      write(0,*)'   ixmax,iymax,izmax=',ixmax,iymax,izmax

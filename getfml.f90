@@ -9,12 +9,10 @@
                         MYID,NAT,NAT0,NAT3,NAVG,NCOMP,NSCAT,NX,NY,NZ,PHI,     &
                         PIA2,QABS,QBKSCA,QEXT,QPHA,QSCA,QSCAG,QSCAG2,QTRQAB,  &
                         QTRQSC,SCRRS1,SCRRS2,SHPAR,TOL,TIMERS,MXTIMERS,       &
-                        NTIMERS,NLAR,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,CenterX0, &
-                        CenterX0R,IWRPOL,c,h_bar,h_bar2,velocity,e_charge,    &
+                        NTIMERS,NLAR,AEFFA,WAVEA,MXRAD,MXWAV,CENTER, &
+                        IWRPOL,c,h_bar,h_bar2,velocity,e_charge,    &
                         DielectricConst,XLR,YLR,ZLR,RM)
                         !Arguments AEFFA and after added SMC 03.05.13 following NWB 3/8/12
-                        !Added CenterX0 by SMC 14.5.13
-                        !Added XLR,YLR,ZLR, CenterX0R by SMC 15.5.13
 
 !----------------------------- v6 ----------------------------------------
 
@@ -82,8 +80,6 @@
          AEFFA(MXRAD),     &
          WAVEA(MXWAV),     &
          CENTER(3),        &
-         CenterX0(3),      &
-         CenterX0R(3),     & 
          c,                &
          h_bar,            &
          h_bar2,           &
@@ -95,7 +91,6 @@
          ZLR(3),           &
          RM(3,3)
 !AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
-!CenterX0 added by SMC 14.5.13
 !XLR,YLR, ZLR added by SMC 15.5.13
 
       COMPLEX(WP) ::                    &
@@ -592,11 +587,9 @@
 !            write(0,fmt='(a,1p6e10.2)')'cxe0_tf=',cxe0_tf
 !***
             CALL EVALE(CXE0_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT,NAT0,NX,NY,NZ, &
-                       CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,CenterX0,CenterX0R, &
+                       CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
                        c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
                        !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
-                       !CenterX0 added by SMC 14.5.13
-                       !XLR,YLR,ZLR, CenterX0R added by SMC 15.5.13
 
 !*** diagnostic
 !            write(0,*)'getfml_v6 ckpt 3, myid=',myid,' jo=',jo
@@ -1197,11 +1190,9 @@
 !***
 
          CALL EVALE(CXE01_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ, &
-                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,CenterX0,CenterX0R, &
+                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
                     c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
               !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
-              !CenterX0 added by SMC 14.5.13
-              !XLR,YLR,ZLR, CenterX0R added by SMC 15.5.13
 
 !*** diagnostic
 !            write(0,*)'getfml_v6 ckpt 32, myid=',myid
@@ -1350,11 +1341,9 @@
 !***
 
          CALL EVALE(CXE02_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ, &
-                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,CenterX0,CenterX0R, &
+                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
                     c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
               !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
-              !CenterX0 added by SMC 14.5.13
-              !XLR,YLR,ZLR, CenterX0R added by SMC 15.5.13
 
 !*** diagnostic
 !            write(0,*)'getfml_v6 ckpt 38, myid=',myid

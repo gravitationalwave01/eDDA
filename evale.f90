@@ -2,7 +2,7 @@
 !Incorporated code that models a fast electron's interaction with a group of dipoles as in 
 !"Optical Excitations in electron microscopy", Rev. Mod. Phys. v. 82 p. 213 equations (4) and (5)
     SUBROUTINE EVALE(CXE00,AKD,DX,X0,IXYZ0,MXNAT,MXN3,NAT,NAT0,NX,NY,NZ,CXE,AEFFA, &
-                     WAVEA,MXRAD,MXWAV,Center,CenterX0,CenterX0R, c,velocity,      &
+                     WAVEA,MXRAD,MXWAV,Center,c,velocity,      &
                      e_charge,DielectricConst,XLR,YLR,ZLR,RM)
       !Arguments AEFFA and after added by NWB 3/8/12
       !CenterX0 added by SMC 14.5.13
@@ -44,11 +44,6 @@
       INTRINSIC ATAN2, DCOS, DSIN, AIMAG, DOT_PRODUCT
       PI = 4._WP*ATAN(1._WP)          !Pi
 
-!*** Define center in internal coordinates
-!      CenterX0(1) = Center(1) - X0(1) !Center of e-beam in relative coordinates
-!      CenterX0(2) = Center(2) - X0(2)
-!      CenterX0(3) = Center(3) - X0(3)
-!Edited out SMC 14.5.13
 
 !***********************************************************************
 ! subroutine EVALE
@@ -110,14 +105,21 @@
       EFieldConstant = 2._WP * e_charge * omega / (velocity ** 2._WP * gamma &
                        * DielectricConst)
       
+      CALL PROD3(RM,Center,CenterX0)
+      CenterX0R(:) = CenterX0(:) - X0(:)
+
+      
+
       PRINT *, 'Relative coordinates of beam:', Center !Spelling correction SMC 8.5.13
-      PRINT *, 'Target coordinates of beam:', CenterX0 !Diagnostic added by SMC 14.5.13
-      PRINT *, 'Rotated target coordinates of beam:' , CenterX0R !Diagnostic added by SMC 15.5.13
+      PRINT *, 'Target rotated coordinates of beam:', CenterX0R!Diagnostic added by SMC 14.5.13
+      PRINT *, 'Rotated coordinates of beam:' , CenterX0 !Diagnostic added by SMC 15.5.13
       PRINT *, 'Target lattice offset:', X0 !Diagnostic added by SMC 14.5.13
       PRINT *, 'Electron speed:', velocity
       PRINT *, 'XLR:', XLR !Diagnostic added by SMC 15.5.13
       PRINT *, 'YLR:', YLR
       PRINT *, 'ZLR:', ZLR
+      PRINT *, 'RM:', RM
+
 
       IF (NAT == NAT0) THEN
          !*** Calculate radius and prevent divide by zero errors
@@ -125,6 +127,7 @@
             DVEC(1) = IXYZ0(i, 1) - CenterX0R(1)
             DVEC(2) = IXYZ0(i, 2) - CenterX0R(2)
             DVEC(3) = IXYZ0(i, 3) - CenterX0R(3)
+            PRINT *, 'DVEC: ', DVEC
             !R = (IXYZ0(i, 3) - CenterX0(3)) ** 2._WP + &    !Edited out old code
             !       (IXYZ0(i, 2) - CenterX0(2)) ** 2._WP
             !R = SQRT(R) * DS                             !Edited out old code
@@ -135,7 +138,14 @@
             XP = DOT_PRODUCT(DVEC,XLR)
             YP = DOT_PRODUCT(DVEC,YLR)
             ZP = DOT_PRODUCT(DVEC,ZLR)
+            PRINT *, 'x: ', XP
+            PRINT *, 'y: ', YP
+            PRINT *, 'z: ', ZP
             R = (ZP ** 2._WP) + (YP ** 2._WP)
+            PRINT *, 'R: ', SQRT(R)
+            PRINT *, 'x: ', IXYZ0(i,1)
+            PRINT *, 'y: ', IXYZ0(i,2)
+            PRINT *, 'z: ', IXYZ0(i,3)
             R = SQRT(R) * DS
             IF (R .EQ. 0._WP) THEN !If the radius is zero, set to a small, but finite distance
                R = 0.01_WP * DS
@@ -163,6 +173,19 @@
                         DCOS(ATAN2((DBLE(YP)) , (DBLE(ZP))))
             !Modified 15.5.13 by SMC
             CALL PROD3C(RM,CXE_temp,CXE(i,:))
+            !IF (i .EQ. 5) THEN
+                PRINT *, 'Before rotation:'
+                PRINT *, 'Ex: ', CXE_temp(1)
+                PRINT *, 'Ey: ', CXE_temp(2)
+                PRINT *, 'Ez: ', CXE_temp(3)
+                PRINT *, 'After rotation:'
+                PRINT *, 'Ex: ', CXE(i,1)
+                PRINT *, 'Ey: ', CXE(i,2)
+                PRINT *, 'Ez: ', CXE(i,3)
+                CXE_temp(1) = SQRT( (CXE_temp(1) ** 2._WP) + (CXE_temp(2) ** 2._WP) + (CXE_temp(3) ** 2._WP))
+                PRINT *, 'Magnitude: ', CXE_temp(1)
+            !END IF
+
          END DO
       ELSE
          IA=0 !Index that labels each unique point at which the field is calculated
@@ -184,7 +207,7 @@
                   !         (IY - CenterX0(2)) ** 2._WP
                   !Radius = SQRT(Radius) * DS
                   !PRINT *, 'Rad(1) OLD:', Radius
-		  !ENDIF
+
                   XPe = DOT_PRODUCT(DVEC,XLR)
                   YPe = DOT_PRODUCT(DVEC,YLR)
                   ZPe = DOT_PRODUCT(DVEC,ZLR)
@@ -192,13 +215,13 @@
                            (YPe) ** 2._WP
                   Radius = SQRT(Radius) * DS
                   IF (IA == 1) THEN                       !Diagnostic
-                  !PRINT *, 'Rad(1) NEW:', Radius
-                  PRINT *, 'XPe:', XPe
-                  PRINT *, 'Check:', DVEC(1)
-                  PRINT *, 'YPe:', YPe
-                  PRINT *, 'Check:', DVEC(2)
-                  PRINT *, 'ZPe:', ZPe
-                  PRINT *, 'Check:', DVEC(3)
+                      !PRINT *, 'Rad(1) NEW:', Radius
+                      PRINT *, 'XPe:', XPe
+                      PRINT *, 'Check:', DVEC(1)
+                      PRINT *, 'YPe:', YPe
+                      PRINT *, 'Check:', DVEC(2)
+                      PRINT *, 'ZPe:', ZPe
+                      PRINT *, 'Check:', DVEC(3)
                   ENDIF
                   IF (Radius .EQ. 0._WP) THEN !If the radius is zero, set to a small, but finite distance
                      Radius = 0.01_WP * DS
@@ -221,7 +244,7 @@
                   !             DCOS(ATAN2(DS * (DBLE(IY) - CenterX0(2)) , DS * (DBLE(IZ) - &
                   !             CenterX0(3))))
                   CXE_temp(2) = EFieldConstant * CXE_temp(3) * (-1._WP * besselk1(BesselArg)) * &
-                               DSIN(ATAN2((DBLE(YPe)) , (DBLE((ZPe)))))
+                               DSIN(ATAN2((DBLE(YPe)) , (DBLE(ZPe))))
                   CXE_temp(3) = EFieldConstant * CXE_temp(3) * (-1._WP * besselk1(BesselArg)) * &
                                DCOS(ATAN2((DBLE(YPe)) , (DBLE((ZPe)))))
                   

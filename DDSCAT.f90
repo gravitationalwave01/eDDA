@@ -738,8 +738,6 @@
       REAL(WP) :: CENTER(3)
       !Electron energy variable, added by NWB 7/12/12
       REAL(WP) :: ELENERGY
-      !CenterX0 - for rotation added by SMC 14.5.13
-      REAL(WP) :: CenterX0(3), CenterX0R(3)
 
 ! Target Properties:
 ! AEFF=aeff=effective radius of target (physical units)
@@ -1732,16 +1730,17 @@
          DAEFF=(4._WP*PI/(3._WP*REAL(NAT0,KIND=WP)))**(1._WP/3._WP)
 
 ! NAT0=number of dipoles in "real" target
-! Extend target to rectangular volume suitable for FFT
 
+
+
+! Extend target to rectangular volume suitable for FFT
 ! enter EXTEND with 
 !   NX,NY,NZ = extent of physical target in x,y,z directions
-
          CALL EXTEND(CMDFFT,ICOMP,ISCR1,IDVERR,IDVOUT,IOCC,IXYZ0(1,1),     &
                      IXYZ0(1,2),IXYZ0(1,3),BETADF,PHIDF,THETADF,SCRRS2,X0, &
                      MXNX,MXNY,MXNZ,MXNAT,MXNAT0,MXN03,NAT,NAT0,NAT3,NX,   &
                      NY,NZ,IPNF)
-
+!      write(0,*)'ddscat ckpt 9, myid=',myid,' mxn3=',mxn3
 ! return from EXTEND with
 !   NX,NY,NZ = extent of computational volume in x,y,z directions
 
@@ -2561,6 +2560,7 @@
 ! 2012.04.21 (BTD) added NAMBIENT to arg list of SHARE1
 !                  following suggestion from M. Wolff
 
+
       CALL SHARE1(A1,A2,A3,AEFFA,BETA,BETADF,BETMID,BETMXD,CALPHA,            &
                   CBINFLAG,CDESCR,CFLEPS,CMDFFT,CMDFRM,CMDSOL,CMDTRQ,         &
                   CSHAPE,CXE01_LF,CXE02_LF,DAEFF,DX,ENSC_LF,EM1_LF,EM2_LF,    &
@@ -2809,12 +2809,7 @@
 
 !Added SMC 14.5.13
 !Copied from EVALE in order to pass to rotate and GETFML
-!*** Define center in internal coordinates
-      CenterX0(1) = CENTER(1) - X0(1) !Center of e-beam in relative coordinates
-      CenterX0(2) = CENTER(2) - X0(2)
-      CenterX0(3) = CENTER(3) - X0(3)
 
-      PRINT *, 'CenterX0:' , CenterX0
 
 !*** diagnostic
 !                  write(0,*)'DDSCAT ckpt 16, about to call ROTATE'
@@ -2822,8 +2817,7 @@
                   CALL ROTATE(A1,A2,AK1,CXE01_LF,CXE02_LF,BETA(IBETA),    &
                               THETA(ITHETA),PHI(IPHI),EN0_TF,CXE01_TF,    &
                               CXE02_TF,MXSCA,NSCAT,ENSC_LF,EM1_LF,EM2_LF, &
-                              AKS_TF,EM1_TF,EM2_TF,CENTER,CenterX0,CenterX0R,RM)
-!CENTER and CenterX0 added by SMC 14.5.13
+                              AKS_TF,EM1_TF,EM2_TF,RM)
 
 !*** diagnostic
 !                  write(0,*)'DDSCAT ckpt 17'
@@ -2996,12 +2990,10 @@
                                  PIA2,QABS,QBKSCA,QEXT,QPHA,QSCAT,QSCAG,      &
                                  QSCAG2,QTRQAB,QTRQSC,SCRRS1,SCRRS2,SHPAR,    &
                                  TOL,TIMERS,MXTIMERS,NTIMERS,NLAR,AEFFA,      &
-                                 WAVEA,MXRAD,MXWAV,CENTER,CenterX0,CenterX0R, &
+                                 WAVEA,MXRAD,MXWAV,CENTER, &
                                  IWRPOL,c,h_bar,h_bar2,velocity,e_charge,     &
                                  DielectricConst,XLR,YLR,ZLR,RM)
                                  !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
-                                 !CenterX0 added by SMC 14.5.13
-                                 !Added XLR,YLR,ZLR,CenterX0R SMC 15.5.13
 
 !*** diagnostic
 !			write(0,*)'DDSCAT ckpt 22'
