@@ -1,25 +1,27 @@
     SUBROUTINE GETMUELLER(IBETA,IORTH,IPHI,ITHETA,JPBC,MXBETA,MXSCA,MXPHI,   &
-        MXTHET,NSCAT,ORDERM,ORDERN,CMDTRQ,AK1,AKSR,ENSC,ENSCR,PYDDX,PZDDX,   &
-        PHIN,SM,SMORI,S1111,S2121,CX1121,CXE01,CXE02,CXF11,CXF12,CXF21,      &
-        CXF22,CXS1,CXS2,CXS3,CXS4,QABS,QABSUM,QBKSCA,QBKSUM,QEXSUM,QEXT,     &
-        QPHA,QPHSUM,QSCAG,QSCAG2,QSCAT,QSCG2SUM,QSCGSUM,QSCSUM,QTRQAB,       &
-        QTRQABSUM,QTRQSC,QTRQSCSUM,WGTA,WGTB,EM1,EM2,EM1R,EM2R)
+         MXTHET,NSCAT,ORDERM,ORDERN,CMDTRQ,AK1,AKS_TF,ENSC_LF,ENSC_TF,PYDDX, &
+         PZDDX,PHIN,SM,SMORI,S1111,S2121,CX1121,CXE01_LF,CXE02_LF,CXE01_TF,  &
+         CXE02_TF,CXF11,CXF12,CXF21,CXF22,CXS1,CXS2,CXS3,CXS4,QABS,QABSUM,   &
+         QBKSCA,QBKSUM,QEXSUM,QEXT,QPHA,QPHSUM,QSCAG,QSCAG2,QSCAT,QSCG2SUM,  &
+         QSCGSUM,QSCSUM,QTRQAB,QTRQABSUM,QTRQSC,QTRQSCSUM,WGTA,WGTB,EM1_LF,  &
+         EM2_LF,EM1_TF,EM2_TF)
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
+!                       getmueller v5
 ! Arguments:
 
       INTEGER :: IBETA,IORTH,IPHI,ITHETA,JPBC,MXBETA,MXSCA,MXPHI,MXTHET,NSCAT
       CHARACTER :: CMDTRQ*6
       REAL(WP) :: AK1,PYDDX,PZDDX,WG
       REAL(WP) ::            &
-         AKSR(3,MXSCA),      &
-         EM1(3,MXSCA),       &
-         EM1R(3,MXSCA),      &
-         EM2(3,MXSCA),       &
-         EM2R(3,MXSCA),      &
-         ENSC(3,MXSCA),      &
-         ENSCR(3,MXSCA),     &
+         AKS_TF(3,MXSCA),    &
+         EM1_LF(3,MXSCA),    &
+         EM1_TF(3,MXSCA),    &
+         EM2_LF(3,MXSCA),    &
+         EM2_TF(3,MXSCA),    &
+         ENSC_LF(3,MXSCA),   &
+         ENSC_TF(3,MXSCA),   &
          ORDERM(MXSCA),      &
          ORDERN(MXSCA),      &
          PHIN(MXSCA),        &
@@ -49,8 +51,10 @@
          WGTB(MXBETA)
       COMPLEX(WP) ::    &
          CX1121(MXSCA), &
-         CXE01(3),      &
-         CXE02(3),      &
+         CXE01_LF(3),   &
+         CXE02_LF(3),   &
+         CXE01_TF(3),   &
+         CXE02_TF(3),   &
          CXF11(MXSCA),  &
          CXF12(MXSCA),  &
          CXF21(MXSCA),  &
@@ -64,7 +68,8 @@
 
       INTEGER :: J,K,JO,ND,ND2
       REAL(WP) :: COSPHI,FAC,FAC0,PI,SINPHI
-      COMPLEX(WP) :: CXA,CXB,CXC,CXD,CXI,CXTRM1,CXTRM2
+      COMPLEX(WP) :: CXA,CXAA,CXB,CXBB,CXC,CXCC,CXD,CXDD, &
+                     CXFAC0,CXFAC1,CXFAC2,CXI
 
 !***********************************************************************
 ! Given:
@@ -85,25 +90,25 @@
 !          matrix
 !   CMDTRQ='DOTORQ' or 'NOTORQ' depending on whether or not torque
 !          calculation is to be carried out
-!   ENSC(1-3,1-NSCAT)=normalized scattering direction vector in Lab Frame
+!   ENSC_LF(1-3,1-NSCAT)=normalized scattering direction vector in Lab Frame
 !                     for scattering directions 1-NSCAT
-!   ENSCR(1-3,1-NSCAT)=normalized scattering direction vector in Target
+!   ENSC_TF(1-3,1-NSCAT)=normalized scattering direction vector in Target
 !                      Frame for scattering directions 1-NSCA
-!   EM1(1-3,1-NSCAT)=unit scattering polarization vector 1 in Lab Frame
-!   EM2(1-3,1-NSCAT)=unit scattering polarization vector 2 in Lab Frame
-!   EM1R(1-3,1-NSCAT)=unit scattering polarization vector 1 in Target Frame
-!   EM2R(1-3,1-NSCAT)=unit scattering polarization vector 2 in Target Frame
+!   EM1_LF(1-3,1-NSCAT)=unit scattering polarization vector 1 in Lab Frame
+!   EM2_LF(1-3,1-NSCAT)=unit scattering polarization vector 2 in Lab Frame
+!   EM1_TF(1-3,1-NSCAT)=unit scattering polarization vector 1 in Target Frame
+!   EM2_TF(1-3,1-NSCAT)=unit scattering polarization vector 2 in Target Frame
 !   PHIN(1-NSCAT)=values of PHI for scattering directions 1-NSCAT in
 !                 Lab Frame
 !                 [only used if JPBC=0: scattering by finite target]
-!   AKSR(1-3,1-NSCAT)=(kx,ky,kz)*d for NSCAT scattering directions
+!   AKS_TF(1-3,1-NSCAT)=(kx,ky,kz)*d for NSCAT scattering directions
 !                    in Target Frame
 !   ORDERM(1-NSCAT)=scattering order M for case of 1-d or 2-d target
 !   ORDERN(1-NSCAT)=scattering order N for case of 2-d target
 !   S1111(1-NSCAT)=weighted sum of |f_11|^2 over previous orientations
 !   S2121(1-NSCAT)=weighted sum of |f_21|^2 over previous orientations
-!   CXE01(1-3)    =incident pol state 1 in Lab Frame
-!   CXE02(1-3)    =                   2
+!   CXE01_LF(1-3)    =incident pol state 1 in Lab Frame
+!   CXE02_LF(1-3)    =                   2
 !   CXF11(1-NSCAT)=f_11 for current orientation
 !   CXF12(1-NSCAT)=f_12 for current orientation
 !   CXF21(1-NSCAT)=f_21 for current orientation
@@ -191,7 +196,7 @@
 !                * add JPBC to arg list
 !                * add PYDDX and PZDDX to arg list
 ! 06.12.24 (BTD) ver 7.0.1
-!                * redefine normalization of Mueller matrix for 1d targe
+!                * redefine normalization of Mueller matrix for 1d target
 ! 06.12.25 (BTD) * for 2d targets, add contribution of incident wave to
 !                  forward scattering if M=N=0
 ! 07.06.22 (BTD) ver 7.0.2
@@ -218,9 +223,34 @@
 !                  SMORI(MXSCA,4,4) -> SMORI(4,4,MXSCA)
 !                * made corresponding reordering of indices in lines
 !                  evaluating SM and SMORI
+! 11.11.04 (BTD) ddscat ver7.1.1
+!                v3
+!                * change notation: 
+!                  AKSR  -> AKS_TF
+!                  CXE01 -> CXE01_LF
+!                  CXE02 -> CXE02_LF
+!                  ENSC  -> ENSC_LF
+!                  ENSCR -> ENSC_TF
+!                  EM1   -> EM1_LF
+!                  EM2   -> EM2_LF
+!                  EM1R  -> EM1_TF
+!                  EM2R  -> EM2_TF
+!                * for JPBC=3, change ENSC_LF -> ENSC_TF in calculation
+!                  of SINPHI and COSPHI for transformation of incident
+!                  polarization states CXE01_LF, CXE02_LF 
+!                  to parallel or perp to scattering plane
+! 11.11.15 (BTD) * add CXE01_TF,CXE02_TF to argument list here and in
+!                  DDSCAT
+! 11.11.16 (BTD) v4
+!                * finally got the transformation from f_ij to S_i
+!                  correct!
+!                * cleaned up code
+! 12.04.25 (BTD) v5
+!                * corrected error in computation of S_i and S_ij
+!                  for JPBC=0
 ! end history
 
-! Copyright (C) 1996,1997,1998,2000,2003,2006,2007
+! Copyright (C) 1996,1997,1998,2000,2003,2006,2007,2008,2011,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !*********  Sum scattering properties over orientations ****************
@@ -275,82 +305,110 @@
       CXI=(0._WP,1._WP)
       PI=4._WP*ATAN(1._WP)
 
+! Notation:
+!        khat_0     = unit vector along incident direction
+!        ehat_01    = CXE01 = complex incident polarization vector 1
+!        ehat_02    = CXE02 = complex incident polarization vector 2
+!        ehat_0perp = incident pol vector perp to scattering plane
+!                   = scattered pol vector perp to scattering plane
+!                   = em2
+!        ehat_0para = incident pol vector para to scattering plane
+!                   = khat_0 cross ehat_0perp   [conventional def.]
+!                   = xhat_LF cross ehat_0perp
+!                   = xhat_LF cross [yhat_LF (yhat_LF dot ehat_0perp)
+!                                    + zhat_LF (zhat_LF dot ehat_0perp)]
+!                   = - yhat_LF (ehat_0perp dot zhat_LF)
+!                     + zhat_LF (ehat_0perp dot yhat_LF)
+!                   = - yhat_LF em2_LF(3) + zhat_LF em2_LF(2)
+!        em2        = scattered pol vector perp to scattering plane
+!        cxa        = conjg(ehat_01) dot yhat_LF
+!        cxb        = conjg(ehat_01) dot zhat_LF
+!        cxc        = conjg(ehat_02) dot yhat_LF
+!        cxd        = conjg(ehat_02) dot zhat_LF
+
 ! WG=weighting factor for this orientation
 
       WG=WGTA(ITHETA,IPHI)*WGTB(IBETA)
       IF(IORTH==2)THEN
 
-! CXE01,CXE02 are unit incident polarization vectors in Lab Frame.
-! We assume CXE01 and CXE02 are normalized (REAPAR makes sure of this).
-! CXA,CXB,CXC,CXD are complex coefficients corresponding to dot product
-! of complex polarization vectors CXE01,CXE02 with y and z unit vectors
-! in Lab Frame.
-
-         CXA=CONJG(CXE01(2))
-         CXB=CONJG(CXE01(3))
-         CXC=CONJG(CXE02(2))
-         CXD=CONJG(CXE02(3))
-
-!*** diagnostic
-!         write(0,*)'getmueller ckp a'
-!         write(0,*)'cxa=',cxa
-!         write(0,*)'cxb=',cxb
-!         write(0,*)'cxc=',cxc
-!         write(0,*)'cxd=',cxd
-!***
-
 ! Compute complex scattering amplitudes S_1,S_2,S_3,S_4 for this
 ! particular target orientation and NSCAT scattering directions:
 
          IF(JPBC==0)THEN
+            CXA=CONJG(CXE01_LF(2))
+            CXB=CONJG(CXE01_LF(3))
+            CXC=CONJG(CXE02_LF(2))
+            CXD=CONJG(CXE02_LF(3))
             DO ND=1,NSCAT
-               SINPHI=SIN(PHIN(ND))
-               COSPHI=COS(PHIN(ND))
-               CXS1(ND)=CXI*(CXF21(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                             CXF22(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS2(ND)=-CXI*(CXF11(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                              CXF12(ND)*(CXD*SINPHI+CXC*COSPHI))
-               CXS3(ND)=-CXI*(CXF11(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                              CXF12(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS4(ND)=CXI*(CXF21(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                             CXF22(ND)*(CXD*SINPHI+CXC*COSPHI))
+
+! 2012.04.25 (BTD) replace ----------------------------------------------
+!               CXA=-CXE01_LF(2)*EM2_LF(3,ND)+CXE01_LF(3)*EM2_LF(2,ND)
+!               CXB=CXE01_LF(2)*EM2_LF(2,ND)+CXE01_LF(3)*EM2_LF(3,ND)
+!               CXC=-CXE02_LF(2)*EM2_LF(3,ND)+CXE02_LF(3)*EM2_LF(2,ND)
+!               CXD=CXE02_LF(2)*EM2_LF(2,ND)+CXE02_LF(3)*EM2_LF(3,ND)
+!               CXS1(ND)=CXI*(CXF11(ND)*CONJG(CXA)+CXF12(ND)*CONJG(CXC))
+!               CXS2(ND)=CXI*(CXF21(ND)*CONJG(CXB)+CXF22(ND)*CONJG(CXD))
+!               CXS3(ND)=CXI*(CXF11(ND)*CONJG(CXB)+CXF12(ND)*CONJG(CXD))
+!               CXS4(ND)=CXI*(CXF21(ND)*CONJG(CXA)+CXF22(ND)*CONJG(CXC))
+
+               COSPHI=EM2_LF(3,ND)
+               SINPHI=-EM2_LF(2,ND)
+               CXAA=CXA*COSPHI+CXB*SINPHI
+               CXBB=CXB*COSPHI-CXA*SINPHI
+               CXCC=CXC*COSPHI+CXD*SINPHI
+               CXDD=CXD*COSPHI-CXC*SINPHI
+               CXS1(ND)=-CXI*(CXF21(ND)*CXBB+CXF22(ND)*CXDD)
+               CXS2(ND)=-CXI*(CXF11(ND)*CXAA+CXF12(ND)*CXCC)
+               CXS3(ND)=CXI*(CXF11(ND)*CXBB+CXF12(ND)*CXDD)
+               CXS4(ND)=CXI*(CXF21(ND)*CXAA+CXF22(ND)*CXCC)
+!-----------------------------------------------------------------------
+!*** diagnostic
+!               if(nd.eq.10)then
+!                  write(0,*)'getmueller_v5 ckpt 2, nd=',nd
+!                  write(0,fmt='(a,i2,a,3f9.5)')'nd=',nd,' ensc_lf(1-3,nd)=', &
+!                     ensc_lf(1,nd),ensc_lf(2,nd),ensc_lf(3,nd)
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s1 = (',cxs1(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s2 = (',cxs2(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s3 = (',cxs3(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s4 = (',cxs4(nd),')'
+!               endif
+!***
             ENDDO
 
          ELSEIF(JPBC==1.OR.JPBC==2)THEN
 
 ! JPBC = 1 or 2:
-! ENSC(1-3,ND) = components of scattering unit vector in Lab Frame
+! ENSC_LF(1-3,ND) = components of scattering unit vector in Lab Frame
 ! CXA,CXB = y,z components of incident polarization state 1 in Lab Frame
 ! CXC,CXD = y,z                                           2 in Lab Frame
 
+            CXA=CONJG(CXE01_LF(2))
+            CXB=CONJG(CXE01_LF(3))
+            CXC=CONJG(CXE02_LF(2))
+            CXD=CONJG(CXE02_LF(3))
             DO ND=1,NSCAT
-               FAC=SQRT(ENSC(2,ND)**2+ENSC(3,ND)**2)
-               IF(FAC<=1.E-3_WP)THEN
 
-! if FAC = 0, then scattering is in either forward (theta=0) or
-!                  backward (theta=pi) directions
+! 2012.04.25 (BTD) replace ----------------------------------------------
+!               CXA=-CXE01_LF(2)*EM2_LF(3,ND)+CXE01_LF(3)*EM2_LF(2,ND)
+!               CXB=CXE01_LF(2)*EM2_LF(2,ND)+CXE01_LF(3)*EM2_LF(3,ND)
+!               CXC=-CXE02_LF(2)*EM2_LF(3,ND)+CXE02_LF(3)*EM2_LF(2,ND)
+!               CXD=CXE02_LF(2)*EM2_LF(2,ND)+CXE02_LF(3)*EM2_LF(3,ND)
+!               CXS1(ND)=CXI*(CXF11(ND)*CONJG(CXA)+CXF12(ND)*CONJG(CXC))
+!               CXS2(ND)=CXI*(CXF21(ND)*CONJG(CXB)+CXF22(ND)*CONJG(CXD))
+!               CXS3(ND)=CXI*(CXF11(ND)*CONJG(CXB)+CXF12(ND)*CONJG(CXD))
+!               CXS4(ND)=CXI*(CXF21(ND)*CONJG(CXA)+CXF22(ND)*CONJG(CXC))
 
-                  FAC=SQRT(EM1(2,ND)**2+EM2(2,ND)**2)
-                  FAC=FAC*SQRT(REAL(CXA)**2+REAL(CXB)**2)
-                  COSPHI=REAL(CXA*EM1(2,ND)+CXB*EM1(3,ND))/FAC
-                  SINPHI=-REAL(CXA*EM2(2,ND)+CXB*EM2(3,ND))/FAC
-
-               ELSE
-
-! if scattering angle is neither 0 nor pi:
-
-                  COSPHI=REAL(CXA*ENSC(2,ND)+CXB*ENSC(3,ND))/FAC
-                  SINPHI=REAL(CXC*ENSC(2,ND)+CXD*ENSC(3,ND))/FAC
-
-               ENDIF
-               CXS1(ND)=CXI*(CXF21(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                             CXF22(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS2(ND)=-CXI*(CXF11(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                              CXF12(ND)*(CXD*SINPHI+CXC*COSPHI))
-               CXS3(ND)=-CXI*(CXF11(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                              CXF12(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS4(ND)=CXI*(CXF21(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                             CXF22(ND)*(CXD*SINPHI+CXC*COSPHI))
+               COSPHI=EM2_LF(3,ND)
+               SINPHI=-EM2_LF(2,ND)
+               CXAA=CXA*COSPHI+CXB*SINPHI
+               CXBB=CXB*COSPHI-CXA*SINPHI
+               CXCC=CXC*COSPHI+CXD*SINPHI
+               CXDD=CXD*COSPHI-CXC*SINPHI
+               CXS1(ND)=-CXI*(CXF21(ND)*CXBB+CXF22(ND)*CXDD)
+               CXS2(ND)=-CXI*(CXF11(ND)*CXAA+CXF12(ND)*CXCC)
+               CXS3(ND)=CXI*(CXF11(ND)*CXBB+CXF12(ND)*CXDD)
+               CXS4(ND)=CXI*(CXF21(ND)*CXAA+CXF22(ND)*CXCC)
+!-----------------------------------------------------------------------
             ENDDO
 
          ELSEIF(JPBC==3)THEN
@@ -366,113 +424,106 @@
 !     the first NSCAT/2 directions corresponding to transmission, and
 !     the remaining NSCAT/2 directions corresponding to reflection
 
-! CXA,CXB = y,z components of incident polarization state 1 in Lab Frame
-! CXC,CXD = y,z                                           2 in Lab Frame
-! ENSC(1-3,ND) = components of scattering unit vector in Lab Frame
-! EM1(1-3,ND) = components of scattering polarization 1 in Lab Frame
-! EM2(1-3,ND) = components of scattering polarization 2 in Lab Frame
+! ENSC_LF(1-3,ND) = components of scattering unit vector in Lab Frame
+! EM1_LF(1-3,ND) = components of scattering polarization 1 in Lab Frame
+! EM2_LF(1-3,ND) = components of scattering polarization 2 in Lab Frame
 
+            CXA=CONJG(CXE01_LF(2))
+            CXB=CONJG(CXE01_LF(3))
+            CXC=CONJG(CXE02_LF(2))
+            CXD=CONJG(CXE02_LF(3))
             DO ND=1,NSCAT
-
-               FAC=SQRT(ENSC(2,ND)**2+ENSC(3,ND)**2)
-
-!*** diagnostic
-!               write(0,7013)nd,ensc(1,nd),ensc(2,nd),ensc(3,nd),fac
-! 7013 format('getmueller checkpoint baker: nd=',i2,/, &
-!             'ensc(1-3,nd)=',3f8.5,' fac=',f10.7)
-!*** end diagnostic
-
-               IF(FAC<1.E-3_WP)THEN
-
-! either zero-deg forward scattering, or 180 deg backscattering:
-
-                  FAC=SQRT(EM1(2,ND)**2+EM2(2,ND)**2)
-                  FAC=FAC*SQRT(REAL(CXA)**2+REAL(CXB)**2)
-                  COSPHI=REAL(CXA*EM1(2,ND)+CXB*EM1(3,ND))/FAC
-! 080111 (BTD) change
-!                  SINPHI=-REAL(CXA*EM2(2,ND)+CXB*EM2(3,ND))/FAC
-                  SINPHI=REAL(CXA*EM2(2,ND)+CXB*EM2(3,ND))/FAC
+! 2012.04.25 (BTD) replace ----------------------------------------------
+!               CXA=-CXE01_LF(2)*EM2_LF(3,ND)+CXE01_LF(3)*EM2_LF(2,ND)
+!               CXB=CXE01_LF(2)*EM2_LF(2,ND)+CXE01_LF(3)*EM2_LF(3,ND)
+!               CXC=-CXE02_LF(2)*EM2_LF(3,ND)+CXE02_LF(3)*EM2_LF(2,ND)
+!               CXD=CXE02_LF(2)*EM2_LF(2,ND)+CXE02_LF(3)*EM2_LF(3,ND)
 
 !*** diagnostic
-!                  write(0,*)'in getmueller, ckpt ashanti, IBETA=',IBETA
-!                  write(0,*)'nd=',nd,' --- zero deg forward scattering ---'
-!                  write(0,7700)ensc(1,nd),ensc(2,nd),ensc(3,nd),    &
-!                               em1(1,nd),em1(2,nd),em1(3,nd),       &
-!                               em2(1,nd),em2(2,nd),em2(3,nd),       &
-!                               enscr(1,nd),enscr(2,nd),enscr(3,nd), &
-!                               em1r(1,nd),em1r(2,nd),em1r(3,nd),    &
-!                               em2r(1,nd),em2r(2,nd),em2r(3,nd)
-!                  write(0,7701)cxf11(nd),cxf21(nd),cxf12(nd),cxf22(nd), &
-!                               cxa,cxb,cxc,cxd
-!                  write(0,7702)cosphi,sinphi
-! 7700 format('ensc(1-3,nd) =',3f9.5,' [Lab Frame]',/,     &
-!             'em1(1-3,nd)  =',3f9.5,' [Lab Frame]',/,     &
-!             'em2(1-3,nd)  =',3f9.5,' [Lab Frame]',/,     &
-!             'enscr(1-3,nd)=',3f9.5,' [Target Frame]',/,  &
-!             'em1r(1-3,nd) =',3f9.5,' [Target Frame]',/,  &
-!             'em2r(1-3,nd) =',3f9.5,' [Target Frame]')
-! 7701 format('cxf11(nd)=',2f10.6,/,'cxf21(nd)=',2f10.6,/,   &
-!             'cxf12(nd)=',2f10.6,/,'cxf22(nd)=',2f10.6,/,   &
-!             'cxa=',2f10.6,/,'cxb=',2f10.6,/,'cxc=',2f10.6,/,'cxd=',2f10.6)
-! 7702 format('cosphi=',f10.6,' sinphi=',f10.6)
-!*** end diagnostic
-
-               ELSE
-
-! scattering plane is well-defined:
-
-                  COSPHI=REAL(CXA*ENSC(2,ND)+CXB*ENSC(3,ND))/FAC
-                  SINPHI=REAL(CXC*ENSC(2,ND)+CXD*ENSC(3,ND))/FAC
-!*** diagnostic
-!                  write(0,*)'in getmueller, ckpt zulu'
-!                  write(0,*)'nd=',nd,' --- not forward scattering ---'
-!                  write(0,7700)ensc(1,nd),ensc(2,nd),ensc(3,nd),    &
-!                               em1(1,nd),em1(2,nd),em1(3,nd),       &
-!                               em2(1,nd),em2(2,nd),em2(3,nd),       &
-!                               enscr(1,nd),enscr(2,nd),enscr(3,nd), &
-!                               em1r(1,nd),em1r(2,nd),em1r(3,nd),    &
-!                               em2r(1,nd),em2r(2,nd),em2r(3,nd)
-!                  write(0,7701)cxf11(nd),cxf21(nd),cxf12(nd),cxf22(nd), &
-!                               cxa,cxb,cxc,cxd
-!                  write(0,7702)cosphi,sinphi
-!*** end diagnostic
-
-               ENDIF
-
-               CXS1(ND)=CXI*(CXF21(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                             CXF22(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS2(ND)=-CXI*(CXF11(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                              CXF12(ND)*(CXD*SINPHI+CXC*COSPHI))
-               CXS3(ND)=-CXI*(CXF11(ND)*(CXA*SINPHI-CXB*COSPHI)+ &
-                              CXF12(ND)*(CXC*SINPHI-CXD*COSPHI))
-               CXS4(ND)=CXI*(CXF21(ND)*(CXB*SINPHI+CXA*COSPHI)+ &
-                             CXF22(ND)*(CXD*SINPHI+CXC*COSPHI))
-            ENDDO
-
-!*** diagnostic
-!            if(nd.lt.20)then
-!               write(0,*)'ensc(1-3,nd)=',ensc(1,nd),ensc(2,nd),ensc(3,nd)
-!               write(0,*)'fac=',fac
-!               write(0,*)'sinphi=',sinphi
-!               write(0,*)'cosphi=',cosphi
-!               write(0,*)'cxf11(nd)=',cxf11(nd)
-!               write(0,*)'cxf21(nd)=',cxf21(nd)
-!               write(0,*)'cxf12(nd)=',cxf12(nd)
-!               write(0,*)'cxf22(nd)=',cxf22(nd)
-!               write(0,9700)nd,cxs1(nd),cxs2(nd),cxs3(nd),cxs4(nd)
-! 9700          format(i2,' s1,s2,s3,s4=',1p,  &
-!                      2e11.3,1x,2e11.3,1x,2e11.3,1x,2e11.3)
-!               fac=cxs1(nd)*conjg(cxs1(nd))
-!               write(0,*)'|S1|^2=',fac
-!               fac=cxs2(nd)*conjg(cxs2(nd))
-!               write(0,*)'|S2|^2=',fac
-!               fac=cxs3(nd)*conjg(cxs3(nd))
-!               write(0,*)'|S3|^2=',fac
-!               fac=cxs4(nd)*conjg(cxs4(nd))
-!               write(0,*)'|S4|^2=',fac
-!            endif
+!               write(0,*)'getmueller_v5 ckpt 2.9, nd=',nd
+!               write(0,fmt='(a,2f9.5,a,2f9.5)') &
+!                   'cxe01_lf(2)=',cxe01_lf(2),' cxe01_lf(3)=',cxe01_lf(3)
+!               write(0,fmt='(a,f9.5,a,f9.5)') &
+!                   'em1_lf(2)=',em1_lf(2,nd),' em1_lf(3)=',em1_lf(3,nd)
+!               write(0,fmt='(a,f9.5,a,f9.5)') &
+!                   'em2_lf(2)=',em2_lf(2,nd),' em2_lf(3)=',em2_lf(3,nd)
+!               write(0,fmt='(a,2f9.5)')'cxfac1=',cxfac1
+!               write(0,fmt='(a,2f9.5)')'cxfac2=',cxfac2
 !***
-         ENDIF
+!*** diagnostic
+!               write(0,*)'getmueller_v5 ckpt 3, IBETA=',IBETA
+!               write(0,*)'nd=',nd,' --- zero deg forward scattering ---'
+!               write(0,7700)ensc_lf(1,nd),ensc_lf(2,nd),ensc_lf(3,nd), &
+!                            em1_lf(1,nd),em1_lf(2,nd),em1_lf(3,nd),    &
+!                            em2_lf(1,nd),em2_lf(2,nd),em2_lf(3,nd),    &
+!                            ensc_tf(1,nd),ensc_tf(2,nd),ensc_tf(3,nd), &
+!                            em1_tf(1,nd),em1_tf(2,nd),em1_tf(3,nd),    &
+!                            em2_tf(1,nd),em2_tf(2,nd),em2_tf(3,nd),    &
+!                            cxa,cxb,cxc,cxd,cxe01_lf,cxe02_lf
+!               write(0,7701)cxf11(nd),cxf21(nd),cxf12(nd),cxf22(nd)
+!               write(0,7702)cxfac1,cxfac2
+! 7700 format('ensc_lf(1-3,nd)=',3f9.5,' [Lab Frame]',/,    &
+!             'em1_lf(1-3,nd) =',3f9.5,' [Lab Frame]',/,    &
+!             'em2_lf(1-3,nd) =',3f9.5,' [Lab Frame]',/,    &
+!             'ensc_tf(1-3,nd)=',3f9.5,' [Target Frame]',/, &
+!             'em1_tf(1-3,nd) =',3f9.5,' [Target Frame]',/, &
+!             'em2_tf(1-3,nd) =',3f9.5,' [Target Frame]',/, &
+!             '  cxa   = (',f10.6,',',f10.6,')',/,   &
+!             '  cxb   = (',f10.6,',',f10.6,')',/,   &
+!             '  cxc   = (',f10.6,',',f10.6,')',/,   &
+!             '  cxd   = (',f10.6,',',f10.6,')',/,   &
+!             'cxe01_LF(1-3,nd)=(',f9.5,',',f9.5,')(', &
+!             f9.5,',',f9.5,')(',f9.5,',',f9.5')',/,   &
+!             'cxe02_LF(1-3,nd)=(',f9.5,',',f9.5,')(', &
+!             f9.5,',',f9.5,')(',f9.5,',',f9.5')')
+! 7701 format('cxf11(nd)=',2f10.6,/,'cxf21(nd)=',2f10.6,/, &
+!             'cxf12(nd)=',2f10.6,/,'cxf22(nd)=',2f10.6)
+! 7702 format('cxfac1=',2f10.6,/,'cxfac2=',2f10.6)
+!*** end diagnostic
+
+!               CXS1(ND)=CXI*(CXF11(ND)*CONJG(CXA)+CXF12(ND)*CONJG(CXC))
+!               CXS2(ND)=CXI*(CXF21(ND)*CONJG(CXB)+CXF22(ND)*CONJG(CXD))
+!               CXS3(ND)=CXI*(CXF11(ND)*CONJG(CXB)+CXF12(ND)*CONJG(CXD))
+!               CXS4(ND)=CXI*(CXF21(ND)*CONJG(CXA)+CXF22(ND)*CONJG(CXC))
+
+               COSPHI=EM2_LF(3,ND)
+               SINPHI=-EM2_LF(2,ND)
+               CXAA=CXA*COSPHI+CXB*SINPHI
+               CXBB=CXB*COSPHI-CXA*SINPHI
+               CXCC=CXC*COSPHI+CXD*SINPHI
+               CXDD=CXD*COSPHI-CXC*SINPHI
+               CXS1(ND)=-CXI*(CXF21(ND)*CXBB+CXF22(ND)*CXDD)
+               CXS2(ND)=-CXI*(CXF11(ND)*CXAA+CXF12(ND)*CXCC)
+               CXS3(ND)=CXI*(CXF11(ND)*CXBB+CXF12(ND)*CXDD)
+               CXS4(ND)=CXI*(CXF21(ND)*CXAA+CXF22(ND)*CXCC)
+!-------------------------------------------------------------------------
+!*** diagnostic
+!               if(nd.lt.20)then
+!                  write(0,*)'getmueller_v5 ckpt 5'
+!                  write(0,fmt='(a,i2,a,3f9.5)')'nd=',nd,' ensc_lf(1-3,nd)=', &
+!                     ensc_lf(1,nd),ensc_lf(2,nd),ensc_lf(3,nd)
+!                  write(0,fmt='(a,f10.6)')'fac=',fac
+!                  write(0,fmt='(a,2f10.6)')'cxf11(nd)=',cxf11(nd)
+!                  write(0,fmt='(a,2f10.6)')'cxf21(nd)=',cxf21(nd)
+!                  write(0,fmt='(a,2f10.6)')'cxf12(nd)=',cxf12(nd)
+!                  write(0,fmt='(a,2f10.6)')'cxf22(nd)=',cxf22(nd)
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s1 = (',cxs1(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s2 = (',cxs2(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s3 = (',cxs3(nd),')'
+!                  write(0,fmt='(a,1pe10.3,1pe11.3,a)')' s4 = (',cxs4(nd),')'
+!                  fac=cxs1(nd)*conjg(cxs1(nd))
+!                  write(0,'(a,f12.8)')'|S1|^2=',fac
+!                  fac=cxs2(nd)*conjg(cxs2(nd))
+!                  write(0,'(a,f12.8)')'|S2|^2=',fac
+!                  fac=cxs3(nd)*conjg(cxs3(nd))
+!                  write(0,'(a,f12.8)')'|S3|^2=',fac
+!                  fac=cxs4(nd)*conjg(cxs4(nd))
+!                  write(0,'(a,f12.8)')'|S4|^2=',fac
+!               endif
+!***
+            ENDDO   ! loop over ND
+
+         ENDIF   ! JPBC==3
 
 ! if JPBC=1,2,3 (target periodic in y, z, or y and z directions):
 ! Check for special case: JPBC=3 (2-d target) and forward scattering wit
@@ -482,77 +533,91 @@
 ! iS_1 -> iS_1 +1  and iS_2 -> iS_2 +1
 !  S_1 ->  S_1 -i       S_2 ->  S_2 -i
 ! note that CXS1 and CXS2 have yet to be multiplied by factor
-! 2*pi/(ak1*aksr(1,nd)*pyddx*pzddx)
+! 2*pi/(ak1*aks_tf(1,nd)*pyddx*pzddx)
 
          IF(JPBC==3)THEN
 !*** diagnostic
-!            write(0,9089)ibeta
+!            write(0,9089)ibeta,cxe01_lf,cxe02_lf,cxe01_tf,cxe02_tf
 !            do nd=1,nscat
-!               write(0,9090)nd,em1(1,nd),em1(2,nd),em1(3,nd),        &
-!                            em2(1,nd),em2(2,nd),em2(3,nd),           &
-!                            em1r(1,nd),em1r(2,nd),em1r(3,nd),        &
-!                            em2r(1,nd),em2r(2,nd),em2r(3,nd),        &
-!                            cxf11(nd),cxf21(nd),cxf12(nd),cxf22(nd), &
-!                            cosphi,sinphi,cxs1(nd),cxs2(nd),         &
-!                            cxs3(nd),cxs4(nd),cxa,cxb,cxc,cxd
+!--------
+!               write(0,9090)nd,em1_lf(1,nd),em1_lf(2,nd),em1_lf(3,nd), &
+!                            em2_lf(1,nd),em2_lf(2,nd),em2_lf(3,nd),    &
+!                            em1_tf(1,nd),em1_tf(2,nd),em1_tf(3,nd),    &
+!                            em2_tf(1,nd),em2_tf(2,nd),em2_tf(3,nd),    &
+!                            cxfac1,cxfac2,                             &
+!                            cxf11(nd),cxf21(nd),cxf12(nd),cxf22(nd),   &
+!                            cxs1(nd),cxs2(nd),           &
+!                            cxs3(nd),cxs4(nd)
 !            enddo
-! 9089 format('------------ in getmueller, ibeta=',i3,' ------------------')
+! 9089 format('---------- getmueller_v5 ckpt 6, ibeta=',i3,' -------_-------',/, & 
+!             'cxe01_LF =',3('(',f10.6,',',f10.6,') '),/,                      &
+!             'cxe02_LF =',3('(',f10.6,',',f10.6,') '),/,                      &
+!             'cxe01_TF =',3('(',f10.6,',',f10.6,') '),/,                      &
+!             'cxe02_TF =',3('(',f10.6,',',f10.6,') '))
 ! 9090 format(' nd=',i2,/,                            &
-!             'em1=',3f10.6,' in lab frame',/,        &
-!             'em2=',3f10.6,' in lab frame',/,        &
-!             'em1r=',3f10.6,' in TF',/,              &
-!             'em2r=',3f10.6,' in TF',/,              &
+!             'em1_lf=',3f10.6,' in lab frame',/,     &
+!             'em2_lf=',3f10.6,' in lab frame',/,     &
+!             'em1_tf=',3f10.6,' in TF',/,            &
+!             'em2_tf=',3f10.6,' in TF',/,            &
+!             'cxfac1=a=(',f10.6,',',f10.6,')',/,     &
+!             'cxfac2=b=(',f10.6,',',f10.6,')',/,     &
 !             'cxf11=',2F12.8,/,'cxf21=',2F12.8,/,    &
 !             'cxf12=',2F12.8,/,'cxf22=',2F12.8,/,    &
-!             'cosphi=',f10.6,' sinphi=',f10.6,/,     &
 !             'cxs1=',2f12.8,/,'cxs2=',2f12.8,/,      &
-!             'cxs3=',2f12.8,/,'cxs4=',2f12.8,/,      &
-!             'cxa=',2f13.8,/,'cxb=',2f13.8,/,        &
-!             'cxc=',2f13.8,/,'cxd=',2f13.8)
+!             'cxs3=',2f12.8,/,'cxs4=',2f12.8)
 !*** end diagnostic
 
             DO ND=1,NSCAT/2
                IF(NINT(ORDERM(ND))==0.AND.NINT(ORDERN(ND))==0)THEN
-                  FAC=AK1*ABS(AKSR(1,ND))*PYDDX*PZDDX/(2._WP*PI)
-                  CXTRM1= FAC*(COSPHI*(CXD*COSPHI-CXC*SINPHI)  &
-                               +SINPHI*(-CXB*COSPHI+CXA*SINPHI))
-                  CXTRM2= FAC*(COSPHI*(-CXA*COSPHI-CXB*SINPHI) &
-                               -SINPHI*(CXC*COSPHI+CXD*SINPHI))
 
-!*** begin diagnostic
-!
-!                  write(0,9050)nd,cxs1(nd),cxtrm1,(cxs1(nd)+cxtrm1)
-!                  write(0,9051)cxs2(nd),cxtrm2,(cxs2(nd)+cxtrm2)
-! 9050 format('nd --- radiated cxs --- ',   &
-!                 '----- direct ------- ',  &
-!                 '------ sum ---------',/, &
-!              i2,1x,2f10.6,1x,2f10.6,1x,2f10.6)
-! 9051 format(3x,2f10.6,1x,2f10.6,1x,2f10.6)
-!*** end diagnostic
-
-                  CXS1(ND)=CXS1(ND)+CXTRM1
-                  CXS2(ND)=CXS2(ND)+CXTRM2
-               ENDIF
+! zero-degree forward-scattering
+! need to add incident wave to radiated wave
+! 2012.04.26 (BTD) change
+!                  CXFAC0=AKS_TF(1,ND)*AK1*PYDDX*PZDDX/(2._WP*PI)
+                  CXFAC0=ABS(AKS_TF(1,ND))*AK1*PYDDX*PZDDX/(2._WP*PI)
 !*** diagnostic
-!                  write(0,9091)nd,aksr(1,nd),  &
-!                  cxa,cxb,cxc,cxd,cosphi,sinphi,cxs1(nd),cxs2(nd), &
-!                  cxs3(nd),cxs4(nd)
-!                  nd2=nd+nscat/2
-!                  write(0,9091)nd2,aksr(1,nd2),  &
-!                  cxa,cxb,cxc,cxd,cosphi,sinphi,cxs1(nd2),cxs2(nd2), &
-!                  cxs3(nd2),cxs4(nd2)
-! 9091 format('in getmueller: nd=',i2,            &
-!             ' aksr(1,nd)=',f8.5,/,                           &
-!             'cxa=',2f8.5,/,                                  &
-!             'cxb=',2f8.5,/,                                  &
-!             'cxc=',2f8.5,/,                                  &
-!             'cxd=',2f8.5,/,                                  &
-!             'cosphi=',f8.5,' sinphi=',f8.5,/,                &
-!             'cxs1=',2f12.8,/,'cxs2=',2f12.8,/,               &
-!             'cxs3=',2f12.8,/,'cxs4=',2f12.8)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     'getmueller_v5 ckpt 7:   s1=',cxs1(nd)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     '                     s2=',cxs2(nd)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     '                     s3=',cxs3(nd)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     '                     s4=',cxs4(nd)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     '               cxfac0  =',cxfac0
+!***
+! 2012.04.25 (BTD): for reasons not understood, incident wave
+!                   added for S2 has different sign from S1
+!                   ... does this indicate a sign mistake in
+!                       calculation of either S1 or S2?
+!                   ... is it possible that there is an error in eq. 68 of
+!                       Draine & Flatau 2008?. Something like this could
+!                       arise from a 180deg shift in directions between
+!                       the incident and scattered "parallel" basis vectors,
+!                       or between the incident and scattered "perpendicular"
+!                       basis vectors (should check for this in output files!)
+!                   This appears to indicate that for JPBC=3 the
+!                   sign of either CXS1 or CXS2 is incorrect
+!                   The Mueller matrix elements S11, S22, S12, and S21 appear
+!                   to be correct, but they would not be affected by
+!                   a sign error in either CXS1 or CXS2
+!                   Elements S13,S14,S23,S24,S31,S32,S33,S34,S41,S42,S43,S44
+!                   would be sensitive to a sign error, and it would be
+!                   a good idea to find a way to test them.
+
+                  CXS1(ND)=CXS1(ND)-CXFAC0
+                  CXS2(ND)=CXS2(ND)+CXFAC0
+!---
+!*** diagnostic
+!                  write(0,fmt='(a,2f11.7)') &
+!                     'getmueller_v5 ckpt 7.1: s1=',cxs1(nd)
+!                  write(0,fmt='(a,2f11.7)') &
+!                     '                     s2=',cxs2(nd)
 !*** end diagnostic
-            ENDDO
-         ENDIF
+               ENDIF
+            ENDDO   ! loop over ND
+         ENDIF   ! JPBC==3
 
 ! Calculation of scattering amplitudes CXS1, CXS2, CXS3, CXS4
 ! is complete.
@@ -621,11 +686,11 @@
 
             DO ND=1,NSCAT
                IF(JPBC==1)THEN
-                  FAC=FAC0/SQRT(AKSR(1,ND)**2+AKSR(3,ND)**2)
+                  FAC=FAC0/SQRT(AKS_TF(1,ND)**2+AKS_TF(3,ND)**2)
                ELSEIF(JPBC==2)THEN
-                  FAC=FAC0/SQRT(AKSR(1,ND)**2+AKSR(2,ND)**2)
+                  FAC=FAC0/SQRT(AKS_TF(1,ND)**2+AKS_TF(2,ND)**2)
                ELSEIF(JPBC==3)THEN
-                  FAC=FAC0/AKSR(1,ND)**2
+                  FAC=FAC0/AKS_TF(1,ND)**2
                ELSE
                   CALL ERRMSG('FATAL','GETMUELLER',' invalid JPBC')
                ENDIF
@@ -638,6 +703,12 @@
             ENDDO
          ENDIF
 
+!*** diagnostic
+!         write(0,fmt='(a,7x,a,7x,a,7x,a,7x,a,7x,a,7x,a,2(/,20x,6f11.7))')     &
+!            'getmueller_v5 ckpt 8','S_11','S_12','S_21','S_22','S_31','S_41', &
+!            SM(1,1,1),SM(1,2,1),SM(2,1,1),SM(2,2,1),SM(3,1,1),SM(4,1,1),      &
+!            SM(1,1,2),SM(1,2,2),SM(2,1,2),SM(2,2,2),SM(3,1,2),SM(4,1,2)
+!***
 ! Augment Mueller matrix for orientational average
 
          DO ND=1,NSCAT

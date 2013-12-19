@@ -1,5 +1,5 @@
     SUBROUTINE ROTATE(A1,A2,AK1,CXE01,CXE02,BETA,THETA,PHI,EN0R,CXE01R,CXE02R, &
-        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R)
+        MXSCA,NSCAT,ENSC,EM1,EM2,AKSR,EM1R,EM2R,RM2) 
       USE DDPRECISION, ONLY : WP
       IMPLICIT NONE
 
@@ -15,7 +15,9 @@
 
       INTEGER :: I
       REAL (WP) :: BETA0, PHI0, PI, SINTHE, TERM, THETA0
-      REAL (WP) :: RM1(3,3), RM2(3,3), RM3(3,3), VEC(3)
+      REAL (WP) :: RM1(3,3), RM2(3,3), RM3(3,3), VEC(3)  
+                   
+
 !***********************************************************************
 ! Given:
 !       A1(1-3)=axis 1 of (original, unrotated) target
@@ -181,6 +183,7 @@
       VEC(3) = 0._WP
 
       CALL PROD3(RM2,VEC,EN0R)
+
 
 ! Incident polarization vectors:
 

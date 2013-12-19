@@ -1,22 +1,23 @@
     SUBROUTINE EXTEND(CMETHD,ICOMP,ICOMP2,IDVERR,IDVOUT,IOCC,IX,IY,IZ,BETADF, &
-                      PHIDF,THETADF,SCRRS2,X0,MXNX,MXNY,MXNZ,MXNAT,MXN3,NAT,  &
-                      NAT0,NAT3,NX,NY,NZ)
+                      PHIDF,THETADF,SCRRS2,X0,MXNX,MXNY,MXNZ,MXNAT,MXNAT0,    &
+                      MXN03,NAT,NAT0,NAT3,NX,NY,NZ,IPNF)
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
 ! Arguments:
 
       CHARACTER(6) :: CMETHD
-      INTEGER :: IDVERR,IDVOUT,MXNAT,MXN3,MXNX,MXNY,MXNZ,NAT,NAT0, &
+      INTEGER :: IDVERR,IDVOUT,MXNAT,MXNAT0,MXN03,MXNX,MXNY,MXNZ,NAT,NAT0, &
          NAT3,NX,NY,NZ
-      INTEGER*2 ::     &
-         ICOMP(MXN3),  &
-         ICOMP2(MXN3), &
+      INTEGER*2 ::        &
+         ICOMP(3*MXNAT),  &
+         ICOMP2(3*MXNAT), &
          IOCC(MXNAT)
       INTEGER ::    &
-         IX(MXNAT), &
-         IY(MXNAT), &
-         IZ(MXNAT)
+         IPNF(6),   &
+         IX(MXNAT0), &
+         IY(MXNAT0), &
+         IZ(MXNAT0)
       REAL(WP) ::        &
          BETADF(MXNAT),  &
          PHIDF(MXNAT),   &
@@ -44,9 +45,18 @@
 !    IZ(1-NAT0) = z-index of dipoles in desired target
 !    X0(1-3)    = x,y,z offset/d from target origin for dipole with IX=0
 !                 IY=0, IZ=0
-!    ICOMP(1-NAT0,1-3) = composition info. for dipoles in desired target
-!                       [with storage locations according to
-!                        dimensioning ICOMP(MXNAT,3) ]
+!                 i.e. x_TF = (IX + X0(1))*d
+!
+!    ICOMP      = composition info. for all locations in physical target
+!                 on input, composition is stored according to
+!                 dimensioning ICOMP(MXNAT,3):
+!                 elements 1 - NAT0                 = comps 1x,2x,3x,..,NAT0x,
+!                 elements NAT0+1 - MXNAT           = 0
+!                 elements MXNAT+1 - MXNAT+NAT0     = comps 1y,2y,3y,..,NAT0y
+!                 elements MXNAT+NAT0+1 - 2*MXNAT   = 0
+!                 elements 2*MXNAT+1 - 2*MXNAT+NAT0 = comps 1z,2z,3z,..,NAT0z
+!                 elements 2*MXNAT+NAT0+1 - 3*MXNAT = 0
+!
 !    BETADF(1-NAT0) = constituent material orientation angle BETA
 !                     (radians) for Dielectric Frame (DF) relative to
 !                     Target Frame (TF)
@@ -56,7 +66,13 @@
 !                     (radians) for DF relative to TF
 !    SCRRS2         = scratch array
 !    MXNX,MXNY,MXNZ = maximum allowed target size in x,y,z directions
-!    MXNAT,MXN3 = dimensioning information
+!    MXNAT,MXNAT0,MXN03 = dimensioning information
+!    IPNF(1)        = padding in -x directions to create near-field zone
+!    IPNF(2)        = padding in +x directions to create near-field zone
+!    IPNF(3)        = padding in -Y directions to create near-field zone
+!    IPNF(4)        = padding in +Y directions to create near-field zone
+!    IPNF(5)        = padding in -Z directions to create near-field zone
+!    IPNF(6)        = padding in +Z directions to create near-field zone
 
 ! Returns:
 !    NAT = number of dipoles in extended target = NX*NY*NZ
@@ -64,7 +80,10 @@
 !    IX(1-NAT0) = x-index of dipoles in reordered physical target
 !    IY(1-NAT0) = y-index of dipoles in reordered physical target
 !    IZ(1-NAT0) = z-index of dipoles in reordered physical target
-!    ICOMP(1-NAT,1-3) = composition inf. for dipoles (ICOMP=0 if vacant)
+!    ICOMP(  1     -  NAT) = x-composition ident. for sites (ICOMP=0 if vacant)
+!    ICOMP(NAT+1   - 2*NAT)= y-composition ident. for sites (ICOMP=0 if vacant)
+!    ICOMP(2*NAT+1 - 3*NAT)= z-composition ident. for sites (ICOMP=0 if vacant)
+!                     = composition inf. for dipoles (ICOMP=0 if vacant)
 !                       [with storage locations according to
 !                        dimensioning ICOMP(NAT,3) ]
 !    IOCC(J=1-NAT3) = 0 or 1 depending on whether site (JX,JY,JZ) is
@@ -74,7 +93,7 @@
 !                    reordered physical target
 !    PHIDF(1-NAT0)=material orientation angle PHI (radians) for
 !                  reordered physical target
-!    THETADF(1-NAT)=material orientation angle THETA (radians) for
+!    THETADF(1-NAT0)=material orientation angle THETA (radians) for
 !                    reordered target
 !             NB: BETADF(JA)=PHIDF(JA)=THETADF(JA)=0 at unoccupied sites
 !    NX = range of IX values (1 to NX)
@@ -132,8 +151,11 @@
 !                 [Question: do we really need to shift IX,IY,IZ?]
 ! 07.09.11 (BTD): Corrected shift of X0(3)
 !                 Changed IX,IY,IZ from INTEGER*2 to INTEGER
+! 11.08.16 (BTD) v7.2.1
+!                * add IPNF to argument list, and use this to
+!                  pad space around target for nearfield calculation
 ! end history
-! Copyright (C) 1993,1996,1998,2000,2004,2006,2007
+! Copyright (C) 1993,1996,1998,2000,2004,2006,2007,2011
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -153,6 +175,26 @@
 
 !*** First determine max., min values of input IX,IY,IZ for occupied sites:
 
+!*** diagnostic
+!      write(0,*)'extend ckpt 0'
+!      write(0,*)'   entered extend with'
+!      write(0,*)'   mxnx,mxny,mxnz=',mxnx,mxny,mxnz
+!      write(0,*)'      mxnat=',mxnat
+!      write(0,*)'     mxnat0=',mxnat0
+!      write(0,*)'   nat0,nat=',nat0,nat
+!      write(0,*)'       nat3=',nat3
+!      write(0,*)'   nx,ny,nz=',nx,ny,nz
+!      write(0,*)'  ipnf(1-6)=',ipnf
+!      write(0,*)'      ix(1)=',ix(1)
+!      write(0,*)'      iy(1)=',iy(1)
+!      write(0,*)'      iz(1)=',iz(1)
+!      write(0,*)'   j icomp(j), j=1 - nat3=',nat3, &
+!                ' [may not yet be in natural order]'
+!      do ja=1,3*nat
+!         write(0,fmt='(i5,i2)')ja,icomp(ja)
+!      enddo
+!***
+
       IXMIN=IX(1)
       IXMAX=IX(1)
       IYMIN=IY(1)
@@ -168,12 +210,19 @@
          IF(IZ(JA)>IZMAX)IZMAX=IZ(JA)
       ENDDO
 
-!*** Now shift so that IX runs from 1 to IXMAX-IXMIN+1, etc.
+!*** diagnostic
+!      write(0,*)'extend ckpt 2'
+!***
+
+!*** Now shift so that 
+!   IX for physical sites runs from IPNF(1) to IPNF(1)+IXMAX-IXMIN+1
+!   IY for physical sites runs from IPNF(3) to IPNF(3)+IYMAX-IYMIN+1
+!   IZ for physical sites runs from IPNF(5) to IPNF(5)+IZMAX-IZMIN+1
 
       DO JA=1,NAT0
-         IX(JA)=IX(JA)+1-IXMIN
-         IY(JA)=IY(JA)+1-IYMIN
-         IZ(JA)=IZ(JA)+1-IZMIN
+         IX(JA)=IX(JA)+1-IXMIN+IPNF(1)
+         IY(JA)=IY(JA)+1-IYMIN+IPNF(3)
+         IZ(JA)=IZ(JA)+1-IZMIN+IPNF(5)
       ENDDO
       IXMAX=IXMAX-IXMIN+1
       IYMAX=IYMAX-IYMIN+1
@@ -183,9 +232,18 @@
 ! therefore need to change X0(1-3)
 ! where X0(1-3)*d = physical location in TF of dipole with IX=IY=IZ=0
 
-      X0(1)=X0(1)+REAL(IXMIN-1,KIND=WP)
-      X0(2)=X0(2)+REAL(IYMIN-1,KIND=WP)
-      X0(3)=X0(3)+REAL(IZMIN-1,KIND=WP)
+      X0(1)=X0(1)+REAL(IXMIN-1-IPNF(1),KIND=WP)
+      X0(2)=X0(2)+REAL(IYMIN-1-IPNF(3),KIND=WP)
+      X0(3)=X0(3)+REAL(IZMIN-1-IPNF(5),KIND=WP)
+
+
+!*** diagnostic
+!      write(0,*)'extend ckpt 3'
+!      write(0,*)'   ixmax,iymax,izmax=',ixmax,iymax,izmax
+!      write(0,*)'   ipnf(1-6)=',ipnf
+!      write(0,fmt='(a,f7.3,a,f7.3,a,f7.3)')'   new x0(1-3)=', &
+!                  x0(1),',',x0(2),',',x0(3)
+!***
 
       WRITE(IDVOUT,6100)IXMAX,IYMAX,IZMAX
 
@@ -215,21 +273,26 @@
          NY=0
          NZ=0
          DO JA=1,MX235
-            IF(IXMAX<=NF235(JA).AND.NX==0)NX=NF235(JA)
-            IF(IYMAX<=NF235(JA).AND.NY==0)NY=NF235(JA)
-            IF(IZMAX<=NF235(JA).AND.NZ==0)NZ=NF235(JA)
+            IF(IXMAX+IPNF(1)+IPNF(2)<=NF235(JA).AND.NX==0)NX=NF235(JA)
+            IF(IYMAX+IPNF(3)+IPNF(4)<=NF235(JA).AND.NY==0)NY=NF235(JA)
+            IF(IZMAX+IPNF(5)+IPNF(6)<=NF235(JA).AND.NZ==0)NZ=NF235(JA)
          ENDDO
+
+!*** diagnostic
+!         write(0,*)'extend ckpt 4'
+!         write(0,*)'   nx,ny,nz=',nx,ny,nz
+!***
       ELSE
 
 ! Using a routine with no restriction on NX,NY,NZ:
 ! e.g.,
 ! -- FFTWFJ : FFTW routine from Frigo and Johnson
 
-         NX=IXMAX
-         NY=IYMAX
-         NZ=IZMAX
+         NX=IXMAX+IPNF(1)+IPNF(2)
+         NY=IYMAX+IPNF(3)+IPNF(4)
+         NZ=IZMAX+IPNF(5)+IPNF(6)
       ENDIF
-      IF(NX>MXNX .OR. NY>MXNY .OR. NZ>MXNZ)THEN
+      IF(NX>MXNX.OR.NY>MXNY.OR.NZ>MXNZ)THEN
          IF(NX*NY*NZ>MXNX*MXNY*MXNZ)THEN
             WRITE(IDVOUT,6300)NX,NY,NZ,MXNX,MXNY,MXNZ
             CALL ERRMSG('FATAL','EXTEND', &
@@ -242,6 +305,7 @@
       NAT3=3*NAT
 
 !*** Now extend target: generate vectors of dipole properties
+!    for all sites in extended target
 !        ICOMP(jx,jy,jz,1-3)=ICOMP(ja,1-3)=ICOMP(ja3)
 !        IOCC(jx,jy,jz)=IOCC(ja)
 !    with indices jx,jy,jz running from 1-NX,1-NY,1-NZ
@@ -251,6 +315,11 @@
 
 ! First initialize ICOMP, IOCC, and SCRRS1 to zero:
 
+!*** diagnostic
+!      write(0,*)'extend ckpt 5'
+!      write(0,*)'    NAT=',nat,' NAT0=',nat0
+!***
+
       DO JA2=1,NAT
          IOCC(JA2)=0
          ICOMP2(JA2)=0
@@ -259,11 +328,23 @@
          SCRRS2(JA2)=0._WP
       ENDDO
 
+!*** diagnostic
+!      write(0,*)'extend ckpt 6, nat0=',nat0
+!      write(0,*)'       ix(1)=',ix(1)
+!      write(0,*)'       iy(1)=',iy(1)
+!      write(0,*)'       iz(1)=',iz(1)
+!***
 ! Now reset values at occupied sites
 
       NXY=NX*NY
       DO JA=1,NAT0
+!*** diagnostic
+!         write(0,*)'extend ckpt 6.1 ja=',ja,' ix,iy,iz=',ix(ja),iy(ja),iz(ja)
+!***
          JA2=IX(JA)+NX*(IY(JA)-1)+NXY*(IZ(JA)-1)
+!*** diagnostic
+!         write(0,*)'extend ckpt 6.2 ja2=',ja2
+!***
          IOCC(JA2)=1
          ICOMP2(JA2)=ICOMP(JA)
          ICOMP2(JA2+NAT)=ICOMP(JA+MXNAT)
@@ -271,17 +352,30 @@
          SCRRS2(JA2)=BETADF(JA)
       ENDDO
 
+!*** diagnostic
+!      write(0,*)'extend ckpt 7'
+!***
+
 ! Now overwrite original ICOMP
 
       DO JA=1,NAT3
          ICOMP(JA)=ICOMP2(JA)
       ENDDO
+
+! Overwrite original BETADF
+
       DO JA=1,NAT
          BETADF(JA)=SCRRS2(JA)
       ENDDO
 
+!*** diagnostic
+!      write(0,*)'extend ckpt 8'
+!***
+
 ! SCRRS2 should still be zero at unoccupied sites, so no need
 ! to rezero this array.
+
+! Overwrite original PHIDF
 
       DO JA=1,NAT0
          JA2=IX(JA)+NX*(IY(JA)-1)+NXY*(IZ(JA)-1)
@@ -290,6 +384,9 @@
       DO JA=1,NAT
          PHIDF(JA)=SCRRS2(JA)
       ENDDO
+
+! Overwrite original THETADF
+
       DO JA=1,NAT0
          JA2=IX(JA)+NX*(IY(JA)-1)+NXY*(IZ(JA)-1)
          SCRRS2(JA2)=THETADF(JA)
@@ -297,6 +394,10 @@
       DO JA=1,NAT
          THETADF(JA)=SCRRS2(JA)
       ENDDO
+
+!*** diagnostic
+!      write(0,*)'extend ckpt 9'
+!***
 
 ! Now reorder IX,IY,IZ to correspond to new ordering of occupied sites
 
@@ -312,8 +413,13 @@
             IZ(JA)=IZA
          ENDIF
       ENDDO
+
+!*** diagnostic
+!      write(0,*)'extend ckpt 10'
+!***
+
       RETURN
-6100  FORMAT(' >EXTEND: target extent in x,y,z directions =',I5,',',I5,',', &
+6100  FORMAT(' >EXTEND target extent in x,y,z directions =',I5,',',I5,',', &
         I5,' (in Target Frame)')
 6300  FORMAT(' >EXTEND: Fatal error after extending target!:',/,            &
         '          Extended target extent in x,y,z directions =',I5,',',I5, &

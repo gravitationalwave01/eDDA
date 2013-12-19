@@ -1,12 +1,12 @@
-    SUBROUTINE ALPHADIAG(AKR,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF,      &
-                         CXALOS,CXE0R,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,  &
+    SUBROUTINE ALPHADIAG(AK_TF,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF,      &
+                         CXE0_TF,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,       &
                          IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,JORTH,MYID, &
                          MXCOMP,MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,     &
                          CXRLOC,CSHAPE,SHPAR)
       USE DDPRECISION,ONLY : WP
       USE DDCOMMON_8,ONLY : CMDFFT
       IMPLICIT NONE
-
+!--------------------------- alphadiag v3 -------------------------------------
 !*** Arguments:
 
       CHARACTER(6) :: CALPHA
@@ -16,9 +16,8 @@
       COMPLEX(WP) ::                                                 &
          CXALOF(NAT,3),                                              &
          CXALPH(NAT,3),                                              &
-         CXE0R(3),                                                   &
+         CXE0_TF(3),                                                 &
          CXEPS(MXCOMP),                                              &
-         CXALOS(NAT,3),                                              &
          CXSC(NAT,3,3),                                              &
          CXSCR1(NAT,3),                                              &
          CXZC(NX+1+IPBC*(NX-1),NY+1+IPBC*(NY-1),NZ+1+IPBC*(NZ-1),6), &
@@ -27,10 +26,10 @@
       INTEGER*2 ::     & 
          ICOMP(NAT,3), &
          IOCC(NAT)
-      INTEGER :: &
+      INTEGER ::     &
          IXYZ0(NAT0,3)
       REAL(WP) ::       &
-         AKR(3),        &
+         AK_TF(3),      &
          BETADF(MXNAT), &
          DX(3),         &
          PHIDF(MXNAT),  &
@@ -42,8 +41,8 @@
       LOGICAL :: INIT
       CHARACTER :: CMSGNM*70
       INTEGER :: IA,IC,IC2,IC3,L
-      REAL(WP) :: AK1,AK2,B1,B2,B3,B3L,COSBE,COSPH,COSTH,EMKD,PI, &
-                  SINBE,SINPH,SINTH,SUM,LAMBDA
+      REAL(WP) :: AK1,AK2,AK3,B1,B2,B3,B3L,COSBE,COSPH,COSTH,EMKD,PI, &
+                  SINBE,SINPH,SINTH,SUM
       REAL(WP) :: &
          R(3,3),  &
          RI(3,3)
@@ -63,21 +62,27 @@
 
 !***********************************************************************
 ! Given:
-!       AKR(1-3)=(kx,ky,kz)*d, where d=effective lattice spacing
+!       AK_TF(1-3)=(kx,ky,kz)*d, where d=effective lattice spacing
 !       BETADF(1-NAT)
 !       PHIDF(1-NAT)
 !       THETADF(1-NAT): orientation angles beta,phi,theta (radians)
 !                       specifying orientation of "Dielectric Frame" (DF
 !                       relative to the "Target Frame" (TF)
 
-!       CALPHA = 'LATTDR' or 'SCLDR' = polarizability prescription
+!       CALPHA = polarizability prescription
+!              = 'LATTDR' for LDR of Draine & Goodman (1993)
+!              = 'GKDLDR' for LDR of Gutkowicz-Krusin & Draine (2004)
+!              = 'FLTRCD' for filtered coupled dipole approach
+!                             of Gay-Balmaz & Martin (2002) and
+!                             Yurkin, Min & Hoekstra (2010)
+!              [= 'SCLDR' not supported in present version] 
 !       CMETHD = determines 3-d FFT routine used by ESELF
 !       CSHAPE = descriptor of target shape
-!       CXE0R(1-3) = polarization vector in lattice coordinates
+!       CXE0_TF(1-3) = polarization vector in lattice coordinates
 !                    (assumed to be normalized)
 !       CXEPS(1-NCOMP)=distinct values of dielectric constant
-!       CXSC(1-NAT,1-3,1-3) = complex scratch space for SCLDR calculatio
-!       CXSCR1(1-NAT,1-3)   = complex scratch space for SCLDR calculatio
+!       CXSC(1-NAT,1-3,1-3) = complex scratch space for SCLDR calculation
+!       CXSCR1(1-NAT,1-3)   = complex scratch space for SCLDR calculation
 !       CXZC = complex scratch space needed by ESELF
 !       CXZW = complex scratch space needed by ESELF
 !       DX(1-3)=(dx/d,dy/d,dz/d), where dx,dy,dz=lattice spacings in
@@ -106,9 +111,8 @@
 !       SHPAR(1-10)=target shape parameters
 
 ! Returns:
-!       CXALPH(J,1-3)=(alpha_11,alpha_22,alpha_33)/d^3 for dipole J=1-NA
+!       CXALPH(J,1-3)=(alpha_11,alpha_22,alpha_33)/d^3 for dipole J=1-NAT
 !                     where alpha_ij=complex polarizability tensor.
-!       CXALOF(J,1-3)=(alpha_23,alpha_31,alpha_12)/d^3 for dipole J=1-NA
 
 !***
 ! If CALPHA = LATTDR:
@@ -128,6 +132,10 @@
 !    on the DDA target.  This is the recommended option.  It is nearly
 !    but not exactly identical to LATTDR.
 
+! If CALPHA = FLTRCD = "Filtered Discrete Dipole"
+!    Compute dipole polarizability for "Filtered Coupled Dipole" approach
+!    of Piller & Martin (1998) and Gay-Balmaz & Martin (2002)
+!    and recently discussed by Yurkin, Min, & Hoekstra (2010)
 !***
 !    Note: CXALPH = polarizability/d^3
 !    In the event that ICOMP=0, then we set CXALPH=1.
@@ -235,21 +243,39 @@
 !                 BETADF(NAT0)  -> BETADF(MXNAT)
 !                 PHIDF(NAT0)   -> PHIDF(MXNAT)
 !                 THETADF(NAT0) -> THETADF(MXNAT)
-!                 eliminated variable CXALDS from argument list
+! 11.08.03 (BTD): eliminated variable CXALDS from argument list -- not used
+! 11.12.20 (BTD): v7.1.1
+!                 Dominika Dabrowska (Instituto Astrofisico de Andalucia)
+!                 reported problem with rotations of dielectric frame when 
+!                 using option LATTDR
+!                 problem has now been corrected:
+!                 previous version of code only allowed for possible 
+!                 rotation of dielectric frames for option GKDLDR
+!                 code has now been modified to also consider possible
+!                 rotation of dielectric frames for option LATTDR
+! 12.06.02 (BTD): v7.2.1
+!                 replaced CXE0R -> CXE0_TF
+!                 replaced AKR -> AK_TF
+! 12.12.28 (BTD): v7.3.0 alphadiag_v3
+!                 * modified to handle case FLTRCD: calculate alpha
+!                   following prescription of 
 ! end history
-! Copyright (C) 1993,1996,1997,1998,1999,2003,2004,2006,2007,2008
+! Copyright (C) 1993,1996,1997,1998,1999,2003,2004,2006,2007,2008,2011,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 
 !*** diagnostic
-!      write(0,*)'alphadiag ckpt 1'
+!      write(0,*)'alphadiag_v3 ckpt 1, myid=',myid,' jorth=',jorth
+!      write(0,fmt='(a,3f10.5)')' AK_TF =',AK_TF
+!      write(0,*)'icomp(1,1-3)=',icomp(1,1),icomp(1,2),icomp(1,3)
 !***
 
       PI=4._WP*ATAN(1._WP)
-      AK2=AKR(1)*AKR(1)+AKR(2)*AKR(2)+AKR(3)*AKR(3)
+      AK2=AK_TF(1)*AK_TF(1)+AK_TF(2)*AK_TF(2)+AK_TF(3)*AK_TF(3)
       AK1=SQRT(AK2)
-      CXRR=-(AK1*AK2/1.5_WP)*CXI
+      AK3=AK1*AK2
+      CXRR=-(AK3/1.5_WP)*CXI
 
 !*** EMKD = |m|*k_0*d , where |m|=refractive index
 !                             k_0 = wave vector in vacuo
@@ -262,6 +288,9 @@
 !*** Lattice dispersion relation (Draine & Goodman 1993)
 
       IF(CALPHA=='LATTDR')THEN
+!*** diagnostic
+!         write(0,*)'alphadiag_v3 ckpt 2'
+!***
          WRITE(CMSGNM,FMT='(A,F6.4)')                     &
             'Lattice dispersion relation for |m|k_0d=',EMKD
          CALL WRIMSG('ALPHA ',CMSGNM)
@@ -271,17 +300,11 @@
 
          SUM=0.0_WP
          DO L=1,3
-            SUM=SUM+(AKR(L)*ABS(CXE0R(L)))**2
+            SUM=SUM+(AK_TF(L)*ABS(CXE0_TF(L)))**2
          ENDDO
          SUM=SUM/AK2
          B1=-1.8915316_WP*AK2
          B2=(0.1648469_WP-1.7700004_WP*SUM)*AK2
-         !NWB 7/3/12
-!         PRINT *, 'B1:', B1
-!         PRINT *, 'B2:', B2
-!         PRINT *, 'AK1:', AK1
-!         LAMBDA = 2*3.1416/AK1
-!         PRINT *, 'Lambda:', LAMBDA
          DO L=1,3
             DO IA=1,NAT
                IC=ICOMP(IA,L)
@@ -299,16 +322,14 @@
 !*** Radiative-reaction correction:
 
                   CXALPH(IA,L)=CXTERM/(1._WP+CXTERM*CXRR)
+!*** diagnostic
+!                  write(0,fmt='(a,3i3,1pe11.3,1pe10.3)')                &
+!                      'alphadiag_v3 ckpt 3: IA,L,IC=',IA,L,IC,cxalph(ia,l)
+!*** end diagnostic
 
 ! set off-diagonal terms to zero
 
                   CXALOF(IA,L)=0._WP
-
-                  !NWB Diagnostics 7/3/12
-!                  IF ( L .EQ. 3 ) THEN
-!                     PRINT *, 'CXEPS:', CXEPS(IC)
-!                     PRINT *, 'CXALPH(1):', CXALPH(IA,1), CXALPH(IA,2), CXALPH(IA,3)
-!                  ENDIF
 
                ELSEIF(IC==0)THEN
 
@@ -319,14 +340,18 @@
                ENDIF
             ENDDO
          ENDDO
-         RETURN
 
 !*** Lattice dispersion relation: modified
 !    (Gutkowicz-Krusin & Draine 2004)
 
       ELSEIF(CALPHA=='GKDLDR')THEN
-
+!*** diagnostic
+!         write(0,*)'alphadiag_v3 ckpt 4, myid=',myid
+!***
          IF(MYID==0)THEN
+!*** diagnostic
+!            write(0,*)'alphadiag_v3 ckpt 5'
+!***
             WRITE(CMSGNM,FMT='(A,F6.4)')                               &
                   'GKDLDR Lattice dispersion relation for |m|k_0d=',EMKD
             CALL WRIMSG('ALPHA ',CMSGNM)
@@ -339,15 +364,19 @@
 ! B3L = B3*A(I)**2 where a_i = unit vector in direction of propagation
 
 !*** diagnostic
-!         write(0,*)'alphadiag ckpt 2'
+!         write(0,*)'alphadiag_v3 ckpt 6'
 !***
          B1=-1.8915316_WP*AK2
          B2=0.1648469_WP*AK2
          B3=-1.7700004_WP*AK2
          DO L=1,3
-            B3L=B3*AKR(L)*AKR(L)/AK2
+            B3L=B3*AK_TF(L)*AK_TF(L)/AK2
             DO IA=1,NAT
                IC=ICOMP(IA,L)
+!*** diagnostic
+!               write(0,fmt='(i7,i3,i3,a)')ia,l,ic,  &
+!                    ' =ia,l,ic: alphadiag_v3 ckpt 7'
+!*** 
                IF(IC>0)THEN
 
 !*** First compute Clausius-Mossotti polarizability:
@@ -378,8 +407,81 @@
             ENDDO
          ENDDO
 
+      ELSEIF(CALPHA=='FLTRCD')THEN
 !*** diagnostic
-!         write(0,*)'alphadiag ckpt 3'
+!         write(0,*)'alphadiag_v3 ckpt 8, myid=',myid
+!***
+         IF(MYID==0)THEN
+!*** diagnostic
+!            write(0,*)'alphadiag_v3 ckpt 9'
+!***
+            WRITE(CMSGNM,FMT='(A,F6.4)')                               &
+                  'FLTRCD for |m|k_0d=',EMKD
+            CALL WRIMSG('ALPHA ',CMSGNM)
+         ENDIF
+
+! x = (kd)
+! B1 = (4/3)*x^2 
+! B2 = (2/3*pi)*ln[(pi-x)/(pi+x)]*x^3
+
+!*** diagnostic
+!         write(0,*)'alphadiag_v3 ckpt 10'
+!***
+! prescription for alpha from Yurkin, Min & Hoekstra (2010):
+
+         B1=(4._WP*AK2+(2._WP/PI)*LOG((PI-AK1)/(PI+AK1))*AK3)/3._WP
+
+         DO L=1,3
+            DO IA=1,NAT
+               IC=ICOMP(IA,L)
+!*** diagnostic
+!               write(0,fmt='(i7,i3,i3,a)')ia,l,ic,  &
+!                    ' =ia,l,ic: alphadiag_v3 ckpt 11'
+!*** 
+               IF(IC>0)THEN
+
+!*** First compute Clausius-Mossotti polarizability:
+
+                  CXTERM=(.75_WP/PI)*(CXEPS(IC)-1._WP)/(CXEPS(IC)+2._WP)
+
+! now apply corretion term
+
+                  CXTERM=CXTERM/(1._WP+CXTERM*B1)
+
+!*** Radiative-reaction correction
+!    Note that we are applying it differently from other authors
+!    (e.g., Piller & Martin 1998, Gay-Balmaz & Martin 2002, 
+!    Yurkin, Min & Hoekstra 2010) who would have
+!                 CXTERM=CXTERM/(1._WP+B1*CXTERM+CXTERM*CXRR)
+!    whereas we write
+!                 CXTERM=[CXTERM/(1._WP+B1*CXTERM)]/
+!                        [1._WP+CXTERM*CXRR/(1._WP+B1*CXTERM)]
+!    although to leading order (x^3) they are the same
+
+                  CXALPH(IA,L)=CXTERM/(1._WP+CXTERM*CXRR)
+
+! set off-diagonal terms to zero
+
+                  CXALOF(IA,L)=0._WP
+
+               ELSEIF(IC==0)THEN
+
+! To avoid divisions by zero, etc., set CXALPH=1 for vacuum sites.
+
+                  CXALPH(IA,L)=1._WP
+                  CXALOF(IA,L)=0._WP
+               ENDIF
+            ENDDO
+         ENDDO
+      ELSE
+
+         WRITE(CMSGNM,FMT='(A)') 'Error: invalid option for subroutine ALPHA'
+         CALL WRIMSG('ALPHA ',CMSGNM)
+         STOP
+      ENDIF
+
+!*** diagnostic
+!         write(0,*)'alphadiag_v3 ckpt 12'
 !***
 
 ! Now enter module to handle possible microcrystal rotation at each
@@ -390,18 +492,22 @@
          DO IA=1,NAT
             IC=ICOMP(IA,1)
 !*** diagnostic
-!            write(0,*)'alphadiag ckpt 3.1, ia=',ia,' ic=',ic
+!            write(0,*)'alphadiag_v3 ckpt 13, ia=',ia,' ic=',ic
 !***
             IF(IC>0)THEN
                IC2=ICOMP(IA,2)
                IC3=ICOMP(IA,3)
                IF(IC/=IC2.OR.IC/=IC3)THEN
 !*** diagnostic
-!                  write(0,*)'alphadiag ckpt 3.2, ic,ic2,ic3=',ic,ic2,ic3
+!                  write(0,*)'alphadiag_v3 ckpt 14, ic,ic2,ic3=',ic,ic2,ic3
 !***
                   COSTH=COS(THETADF(IA))
                   COSPH=COS(PHIDF(IA))
                   COSBE=COS(BETADF(IA))
+!*** diagnostic
+!                  write(0,fmt='(a,3f10.6)')'costh,cosph,cosbe=', &
+!                                            costh,cosph,cosbe
+!***
                   IF(COSTH*COSBE*COSPH<1._WP)THEN
 
 ! if nonzero rotation, recalculate CXALPH and CXALOF
@@ -461,12 +567,7 @@
             ENDIF
          ENDDO
 !*** diagnostic
-!         write(0,*)'alphadiag ckpt 4'
+!         write(0,*)'alphadiag_v3 ckpt 15'
 !***
          RETURN
-      ELSE
-         WRITE(CMSGNM,FMT='(A)') 'Error: invalid option for subroutine ALPHA'
-         CALL WRIMSG('ALPHA ',CMSGNM)
-         STOP
-      ENDIF
     END SUBROUTINE ALPHADIAG

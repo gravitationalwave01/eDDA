@@ -1,9 +1,12 @@
-    SUBROUTINE VERSION(CSTAMP)
+    SUBROUTINE VERSION(CSTAMP,VERSNUM)
       IMPLICIT NONE
 ! Arguments:
       CHARACTER :: CSTAMP*26
+      INTEGER :: VERSNUM
 
-      CSTAMP = 'DDSCAT 7.1.0 [10.03.03]'
+      CSTAMP='DDSCAT 7.3.0 [13.05.03]'
+      VERSNUM=730
+ 
 !***********************************************************************
 ! History of major changes to DDSCAT package:
 ! 90.12.21 (BTD): Added code to DDSCAT to create output files
@@ -14,14 +17,14 @@
 ! 91.08.15 (BTD): Provide different headings for qtable depending on
 !                 whether IORTH=1 or 2 (add statement 9043 to DDSCAT).
 ! 91.09.17 (BTD): Remove calls to ALPHA and EVALA in DDSCAT (needed to
-!                 move these to subroutine GETFML since alpha from Latti
+!                 move these to subroutine GETFML since alpha from Lattice
 !                 Dispersion Relation depends on propagation direction
 !                 and polarization state)
 !                 Add CALPHA,CXEPS,ICOMP,MXCOMP to argument list for
 !                 GETFML (information required by ALPHA)
 ! 91.11.12 (BTD): Added variable IDVSHP to argument list for TARGET
 !                 (device number for REASHP to use in reading shape file
-! 93.01.15 (BTD): Modified DDSCAT to divided output file qtable into 2 f
+! 93.01.15 (BTD): Modified DDSCAT to divided output file qtable into 2 files
 !                 qtable (containing Q_ext,Q_abs,Q_sca,g,Q_bk) and
 !                 qtable2 (containing Q_pha, Q_pol, Q_cpol)
 ! 93.01.16 (BTD): Modify DDSCAT so that qtable, qtable2, and mtable are
@@ -1063,12 +1066,201 @@
 ! 10.02.06 (BTD) target_v3.f90
 !                * discontinue target option TARSLBLIN
 !                * correct handling of target option BISLINPBC
+! 10.02.07 (BTD) DDSCAT 7.1.0 released
 ! 10.03.03 (BTD) target_v3.f90
 !                * corrected error handling target option FRMFILPBC
-! end history
-
+!                * corected handling of target option ANIFILPBC
+! 10.04.27 (BTD) target_v3.f90
+!                * corrected typo in EXTERNAL statement
+! 10.05.08 (BTD,PJF) ver7.2.a
+!                * added module tangcg.f90 to support CCG option GPBICG
+!                * added module gpbicg.f90 (from Chaumet & Rahmani)
+!                * modified DDSCAT.f90 to support CCG option GPBICG
+!                * modified reapar.f90 to support CCG option GPBICG
+! 11.07.29 (BTD,PJF) ver7.2.b
+!                * add DDCOMMON_0 to ddcommon.f90
+!                * add PROGRAM MAIN at top of DDSCAT.f90
+!                * convert most of DDSCAT.f90 to SUBROUTINE DDSCAT
+!                * add USE DDCOMMON_0 to PROGRAM MAIN (to communicate CFLPAR)
+!                * add USE DDCOMMON_0 to SUBROUTINE DDSCAT
+! 11.08.12 (BTD) * add new routine NEARFIELD to handle nearfield calculation
+!                * add new information to ddscat.par:
+!                  NFIELD = 0 or 1 (to skip or do nearfield calculation)
+!                  EXTNDXYZ(1:6) = fractional extension of computational
+!                     volume in -x,+x,-y,+y,-z,+z directions
+!                     (values must be entered to EXTNDXYZ, but they will
+!                      only be used if NFIELD=1)
+! 11.08.16 (BTD) * make final mods to code so that nearfield evaluation
+!                  can be done within loops over size, wave, and orientation
+! 11.08.30 (BTD) ver7.2.c: modifications necessary to treat refractive index of
+!                  ambient medium, with input wavelengths given in vacuo,
+!                  and dielectric files specified for vacuum wavelengths
+!                * DDSCAT modified
+!                * READPAR modified
+!                * WRITEFML modified
+!                * WRITEPOL modified
+!                * WRITESCA modified
+!                * NEARFIELD modified
+! 11.08.31 (BTD) * implement ACCESS=STREAM for reading and writing binary
+!                  files: affected routines are
+!                * DDSCAT
+!                * NEARFIELD
+!                * READE
+!                * WRITEPOL
+! 11.10.18 (BTD) * add new target option EL_IN_RCT
+!                * add new module TARRCTELL
+!                * modify reapar to support EL_IN_RCT
+! 11.11.07 (BTD) ver7.1.1 and ver7.2.c
+!                * REAPAR: Corrected error reported by V. Choliy 11.11.07
+!                  had failed convert PHI1 from degrees to radians
+!                  for JPBC=1 or JPBC=2
+! 11.11.18 (BTD) ver7.2.0 -- prepare to distribute
+!                * changes in notation
+!                DDSCAT.f90
+!                * add CXE01_TF,CXE02_TF to argument list of GETMUELLER
+!                  in DDSCAT
+!                getmueller_v4.f90
+!                * new version of GETMUELLER, rewritten to correct error in
+!                  computation of Mueller matrix elements
+!                * add CXE01_TF,CXE02_TF to argument list of GETMUELLER
+!                reapar.f90
+!                * added support for reading effective radii aeff
+!                  from table 'aeff.tab'
+! 11.12.20 (BTD) * created alphadiag_v2.f90 to take into account rotation of
+!                  dielectric frame for both options LATTDR and GKDLDR
+! 12.01.23 (BTD) * eliminate reading of IWRPOL from ddscat.par
+!                  (eliminate this line from ddscat.par)
+!                * reapar.f90 now sets IWRPOL=0 unless NRFLD=1, in which
+!                  case it sets IWRPOL=1
+! 12.01.30 (BTD) * writesca_v5.f90 : 
+!                     corrected typo CMDFFT -> CMDSOL
+!                     added CMDSOL to argument list
+!                * DDSCAT.f90 : added CMDSOL to arg list of WRITESCA
+! 12.02.08 (BTD) * readshp_v2.f90 : add option to write target.out if
+!                  IOSHP>0 (which is now the default)
+! 12.02.11 (BTD) * add NRWORD to argument list of subroutine NEARFIELD
+!                  so that NRWORD can be written to binary output file
+!                  which will be read by separate program READNF
+! 12.02.15 (BTD) * DDSCAT 7.2.0 released
+! 12.02.28 (BTD) * corrected error in TARGET for target option FRMFILPBC
+! 12.04.02 (BTD) * corrected typo in TARRECREC noted by Georges Levi
+!                  (Universite Paris-Diderot)
+! 12.04.21 (BTD) v7.2.1:
+!                * corrected MPI bugs identified by M. Wolff
+!                  changes made to
+!                  subroutine DDSCAT (DDSCAT.f90)
+!                  subroutine SHARE1 (both mpi_subs.f90 and mpi_fake.f90)
+! 12.04.25 (BTD) * corrected error in getmueller which led to sign error
+!                  in S_12, S_21, S_33, S_44 for sphere
+!                  getmueller_v5.f90 now conforms to description in
+!                  section 25.1 of the UserGuide
+!                  with exception of difference in sign of terms added
+!                  to CXS1 and CXS2 in case JPBC=3 and forward scattering
+!                  With present use the Mueller matrix elements S11, S22,
+!                  S21, S22 appears to be correct, but have not yet
+!                  eliminated possibility that a sign mistake in either S1
+!                  or S2 may be present in case JPBC=3, in which case
+!                  a number of Mueller matrix elements (S13,S14,S23,S24
+!                  s31,S32,S33,S34,S41,S42,S43,S44) would be affected.
+! 12.04.28 (BTD) * some changes to use of OpenMP to try to make directive usage
+!                  more transparent, with explicit declaration of private
+!                  variable.  Modules employing OpenMP directives
+!                  * DDSCAT.f90
+!                  * eself_v6.f90
+!                  * scat_v5.f90
+! 12.05.14 (BTD) v7.2.1 placed on code.google
+! 12.06.03 (BTD) v7.2.2
+!                * corrected inconsistency in argument list of WRITEPOL
+!                  changed ISCR1,ICOMP -> ICOMP,ISCR1 to agree with WRITEPOL
+!                  This corrects problem reported on 2012.05.17 by 
+!                  Rodrigo Alacaraz de la Osa (Univ. de Cantabria)
+! 12.06.05 (BTD) v7.2.2 placed on code.google
+! 12.06.13 (BTD) * corrected typos identified by Georges Levi in 
+!                  tarrecrec_v2.f90 -> tarrecrec_v3.f90
+! 12.07.10 (BTD) v7.3.0 : begin development
+!                * add NRFLDB to arg list of reapar_v2.f90 and nearfield.f90
+!                * add NRFLDB to variables in DDSCAT
+!                * add CFLB1 and CFLB2 to string variables in 
+!                  DDSCAT, 
+!                  namer_v2.f90
+!                  nearfield_v2.f90
+! 12.08.09 (BTD) v7.2.3 and v7.3.0
+!                * unreduce_v2.f90 : ensure that when NRFLD=2 or 3, 
+!                  undefined polarizations are initialized to cxzero
+!                * bself.f90
+! 12.08.09 (BTD & IYW) v7.3.0
+!                * bself_v2.f90
+!                * eself_v7.f90
+!                * nearfield_v4.f90
+!                * readnfb_v1.f90
+! 12.12.19 (BTD) v7.2.3 and v7.3.0 
+!                * getfml_v5.f90 modified to properly handle elliptical
+!                  polarization for IPHI > 1
+! 12.12.20 (BTD) v7.3.0 minor modification to
+!                * readnfb_v2.f90 to write out CXE0R(1-3)
+! 12.12.21 (BTD) * bself_v3.f90 corrected error in bself_v2
+! 12.12.25 (BTD) DDSCAT
+!                * added NCOMP and CXEPS to arg list of NEARFIELD
+!                * changed CFLB1*15,CFLB2*15 to CFLEB1*16,CFLEB2*16
+!                nearfield_v5.f90
+!                * added NCOMP and CXEPS to argument list
+!                * changed CFLB1*15,CFLB2*15 to CFLEB1*16,CFLEB2*16
+!                * modified to consolidate E and B into single output file
+!                  when NRFLDB=1
+!                * write NRFLDB and NCOMP to output files
+!                  (value of NRFLDB allows READNF to determine whether B
+!                   is to be read from file)
+!                * add CXEPS(1:NCOMP) to output files
+!                namer_v3.f90
+!                * CFLB1*15,CFLB2*15 -> CFLEB1*16,CFLEB2*16
+! 12.12.28 (BTD) alphadiag_v3.f90
+!                * modified to calculate polarizability in case FLTRDD
+!                cisi.f90 now separated from eself.f90
+!                eself_v7.f90 subroutine DIRECT_CALC
+!                * corrected errors in case IDPINT=1 (FLTRDD)
+!                reapar_v3.f90
+!                * modified to eliminate reading IDIPINT
+!                * add option FLTRDD in addition to LATTDR and GKDLDR
+!                writesca_f6.f90
+!                * modified to handle FLTRDD and to flip order
+!                  in which CMETHD and CALPHA are reported
+! 12.12.29 (BTD) eself_v7.f90 subroutine DIRECT_CALC
+!                * bug fix: now correctly handles PBC with FLTRDD option
+! 13.01.04 (BTD) reapar_v3.f90 corrected typo which affected reading
+!                radii from table aeff.tab
+! 13.01.05 (BTD) eself_v7.f90 subroutine DIRECT_CALC
+!                OpenMP bugfix
+! 13.01.10 (BTD,PJF)
+!                cgsarkar3_v2.f90 : new cg package
+!                  with subroutine sbicg90ver2 = option SBICGM
+!                getfml_v6.f90
+!                * modified to support SBIGSM to call sbicg90ver2
+!                * use new version of PETRKP routine
+!                reapar_v3.f90 modified to support SBICGM
+!                DDSCAT.f90 modified to support SBICGM
+!
+! 13.03.18 (BTD) version.f90
+!                * add new variable VERSION for version identification
+!                DDSCAT.f90
+!                * add new variable VERSION
+!                nearfield_v7.f90
+!                * add CSTAMP and VERSION to argument list
+!                * write CSTAMP and VERSION to polarization and nearfield
+!                  files
+! 13.03.22 (BTD) add support for up to 1e6 target orientations
+!               * DDSCAT.f90 (added new variable NORICHAR)
+!               * namer_v4.f90
+!               * namer2.f90
+!               * writesca_v7.f90
+!               * writefml.f90
+! 13.04.22 (BTD) corrected bugs reported by Vasyl Choliy affecting
+!                computations for some anisotropic targets
+!               * DDSCAT.f90
+!               * unreduce_v3.f90
+! 13.05.03 (BTD)* corrected bug in writebin.f90 reported by Vasyl Choliy
 ! Copyright (C) 1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,
-!               2005,2006,2007,2008,2009,2010 B.T. Draine and P.J. Flatau
+!               2005,2006,2007,2008,2009,2010,2011,2012,2013
+!               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
       RETURN

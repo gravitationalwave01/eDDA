@@ -1,50 +1,57 @@
-    SUBROUTINE ESELF(CMETHD,CXZP,NX,NY,NZ,IPBC,GAMMA,PYD,PZD,AK,AKD,DX, &
-                     CXZC,CXZW,CXZE)
+    SUBROUTINE ESELF(CMETHD,CXZP,NX,NY,NZ,IPBC,GAMMA,PYD,PZD,AK,AKD, &
+                     DX,CXZC,CXZW,CXZE)
       USE DDPRECISION,ONLY: WP
+      USE DDCOMMON_0,ONLY: AK2OLD,AK3OLD,IDIPINT,NGRID,WOLD
       IMPLICIT NONE
 
-!----------------------- eself v4.0 --------------------------------
+!----------------------- eself v7 --------------------------------
 ! Arguments:
 
       CHARACTER(6) :: CMETHD
       INTEGER :: IPBC,NX,NY,NZ
       REAL(WP) :: AKD,GAMMA,PYD,PZD
       REAL(WP) :: AK(3),DX(3)
-      COMPLEX(WP) :: &
+      COMPLEX(WP) ::                                                 &
          CXZC(NX+1+IPBC*(NX-1),NY+1+IPBC*(NY-1),NZ+1+IPBC*(NZ-1),6), &
-         CXZE(NX,NY,NZ,3),    &
-         CXZP(NX,NY,NZ,3),    &
+         CXZE(NX,NY,NZ,3),                                           &
+         CXZP(NX,NY,NZ,3),                                           &
          CXZW(2*NX,2*NY,2*NZ,*)
+
+! NB: module DDCOMMON_0 must have previously set values of
+!       AK2OLD,AK3OLD,WOLD
+!    to be used by ESELF
 
 ! Local scalars:
 
       CHARACTER :: CMSGNM*70
-      INTEGER :: I,IR,ISGN,J,JR,JSGN,K,KR,KSGN,M,NGRID
-      REAL(WP) :: AK2OLD,AK3OLD,AKD2,DTIME,FAC,PYDDX,PZDDX,WOLD
+      INTEGER :: I,IR,ISGN,J,JR,JX,JY,JZ,JSGN,K,KR,KSGN,M
+      REAL(WP) :: AKD2,DTIME,FAC,PYDDX,PZDDX
       COMPLEX(WP) :: CXEX,CXEY,CXEZ,CXXX,CXXY,CXXZ,CXYY,CXYZ,CXZZ
 
 ! Local arrays:
 
       INTEGER :: ISYM(3)
 
+#ifdef openmp
+      INTEGER NTHREADS,TID
+#endif
+
       EXTERNAL CXFFTW,DIRECT_CALC,EXTND,PAD,TIMEIT,TRIM
       INTRINSIC MIN,NINT,SIGN
-      SAVE AK2OLD,AK3OLD,NGRID,WOLD
-      DATA AK2OLD/-999._WP/
-      DATA AK3OLD/-999._WP/
-      DATA WOLD/-999._WP/
-
+ 
 !-----------------------------------------------------------------------
 ! Parameter GAMMA determines the range of the sums when periodic
 ! boundary conditions are employed.  Dipole-dipole interactions
 ! are screened by a factor exp[-(gamma*kr)^4]
 ! The effective
-! range/d = 1/(gamma*k*d) = 2000 if gamma=1e-3 and kd=0.5
-!
+! range/d = 1/(gamma*k*d) = 400 if gamma=5e-3 and kd=0.5
+! range/lambda = 1/(2*pi*gamma) = 31.8
+ 
 ! The sums are actually continued out to
-! r/d = 2*/(gamma*kd) = 4000 if gamma=1e-3 , kd=0.5
+! r/d = 2*/(gamma*kd) = 800 if gamma=5e-3 , kd=0.5
 ! [screening factor = exp(-16)=1.1e-7]
-
+!
+! 
 !-----------------------------------------------------------------------
 ! subroutine ESELF
 
@@ -93,19 +100,24 @@
 
 !       NX,NY,NZ        Size of grid in x,y,z directions (INTEGER).
 
-!       PYD             (Period of lattice in y direction)/D(2)
-!       PZD             (Period of lattice in z direction)/D(3)
+!       IPBC          = 0 for isolated target
+!                     = 1 to use periodic boundary conditions
+!                         (in either y direction, z direction, or both)
+!       PYD             (Period of lattice in y direction)/DX(2)
+!       PZD             (Period of lattice in z direction)/DX(3)
+
+!       GAMMA         = coefficient used to assist convergence in
+!                       lattice sums by suppressing long-range contributions
+!                       with factor exp(-(gamma*k*r)^4)
 
 !       DX(1-3)         Lattice spacing in x,y,z directions, in units of
 !                       n**(-1./3.) .  Note that with this normalization
 !                       we have DX(1)*DX(2)*DX(3)=1.
 
 !       AK(1-3)         k(1-3)*d, where k = k vector in vacuo, and
-!                       d = effective lattice spacing = (dx*dy*dz)**(1/3
+!                       d = effective lattice spacing = (dx*dy*dz)**(1/3)
 
-!       AKD             Frequency of oscillation of dipoles and electric
-!                       field; also absolute value of wave vector of
-!                       incident wave [c=1]  (REAL*4).
+!       AKD           = (omega/c)*d = k*d (dimensionless)
 
 !       CXZC            (NX+1)*(NY+1)*(NZ+1)*6 array of Green
 !                       function coefficients used
@@ -117,27 +129,27 @@
 
 !       CXZW            Complex, scratch-space vector of length:
 !                       2*NX*2*NY*2*NY*3
-!                       See comment about FFT usage and CMETHD
-!                       flag.
+!                       See comment about FFT usage and CMETHD flag.
 !                       Can be overwritten between calls to ESELF
-
+!
 ! OUTPUT:
 
 !       CXZE(I,J,K,L)   Lth component of dipole-generated electric field
 !                       at grid point (I,J,K);
-!                       the DECLARED length of ZE in the calling
+!                       the DECLARED length of CXZE in the calling
 !                       program is CXZE(NX,NY,NZ,3)
 !                       [or CXZE(NX*NY*NZ,3) or CXZE(3*NX*NY*NZ)]
 
-! Originally written by Jeremy Goodman, Princeton Univ. Observatory, 90.
+! Originally written by Jeremy Goodman, 
+! Princeton Univ. Observatory, 90.09.22
 ! History:
 ! 90.11.29 (BTD): Modified to set untransformed ZC(1,1,1,1-6)=0.
 ! 90.11.29 (PJF): Modified to use FOURX and CXFFT99
 ! 90.12.05 (BTD): Modified for new ordering of elements of polarization
-!                 and electric field vectors in calling program.  Modifi
-!                 ESELF and PAD to remove distinction between NX,NY,NZ
-!                 and dimensions CXZE and CXZP, since our new ordering
-!                 always assumes this.
+!                 and electric field vectors in calling program.  
+!                 Modified ESELF and PAD to remove distinction between 
+!                 NX,NY,NZ and dimensions of CXZE and CXZP, 
+!                 since our new ordering always assumes this.
 ! 90.12.13 (BTD): Modified to include CONVEX option.
 ! 92.04.20 (BTD): removed ISYM from argument list of TRIM (was not used)
 ! 94.06.20 (PJF): modified to call CXFFT3N when CMETHD='NEWTMP'
@@ -220,29 +232,56 @@
 !                 without the -openmp flag, and it is desirable for
 !                 export code to be able to compile without cpp insofar
 !                 as possible
+! 11.07.03 (PFJ,BTD): eself_v6
+!                 * removed local initialization of AK2OLD,AK3OLD,WOLD
+!                   so that these values are now passed from calling
+!                   program through module DDCOMMON_0
+!                 * NGRID is now passed through module DDCOMMON_0 so
+!                   that NGRID may be provided to other routines
+! 12.07.06 (BTD): edited comments
+! 12.08.02 (IYW): v7.3 : eself_v7
+!                 * added DIPINT to arg list
+!		  * introduced possibility of calculating Green's coefficients
+!		    using "Filtered Coupled Dipole" (FCD) method (cf. ADDA)
+!		  * added subroutine CISI for calculation of sine and cosine 
+!                   integrals
+! 12.08.11 (BTD): * removed DIPINT from arg list of ESELF
+!                 * removed DIPINT from arg list of DIRECT_CALC
+!                 * added new variable IDIPINT from module DDCOMMON_0
 ! end history
-! Copyright (C) 1993,1994,1996,1997,1999,2000,2003,2004,2005,2006,2007,2008
-!               B.T. Draine and P.J. Flatau
+! Copyright (C) 1993,1994,1996,1997,1999,2000,2003,2004,2005,2006,2007,
+!               2008,2011,2012 B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 
-!*** diagnostic
-!      write(0,*)'eself ckpt 1 with nx,ny,nz=',nx,ny,nz
-!      write(0,*)'                 pyd,pzd=',pyd,pzd
-!      write(0,*)'                    ipbc=',ipbc
-!      write(0,*)'                     akd=',akd
-!      write(0,*)'                 dx(1-3)=',dx
-!***
+!--------------------------------------------
 
 !*** diagnostic
-!      write(0,*)'entered eself with akd=',akd
-!      write(0,*)'                  wold=',wold
-!      write(0,*)'entered eself with ak(2)=',ak(2)
-!      write(0,*)'                  ak2old=',ak2old
-!      write(0,*)'entered eself with ak(3)=',ak(3)
-!      write(0,*)'                  ak3old=',ak3old
-!      write(0,*)'                  pyd=',pyd
-!      write(0,*)'                  pzd=',pzd
+!      write(0,*)'eself_v7 ckpt 1 with'
+!      write(0,*)'       cmethd=',cmethd
+!      write(0,*)'     nx,ny,nz=',nx,ny,nz
+!      write(0,*)'      idipint=',idipint
+!      write(0,*)'         ipbc=',ipbc
+!      write(0,*)'        gamma=',gamma
+!      write(0,*)'      pyd,pzd=',pyd,pzd
+!      write(0,*)'      ak(1-3)=',ak
+!      write(0,*)'          akd=',akd
+!      write(0,*)'      dx(1-3)=',dx
+!      write(0,*)'         wold=',wold
+!      write(0,*)'       ak2old=',ak2old
+!      write(0,*)'       ak3old=',ak3old
+!      write(0,*)'  j jx jy jz k   cxzp(jx,jy,jz,k)'
+!      do k=1,3
+!         do jz=1,nz
+!            do jy=1,ny
+!               do jx=1,nx
+!                  i=nz*ny*nx*(k-1)+ny*nx*(jz-1)+nx*(jy-1)+jx
+!                  write(0,fmt='(i4,i3,i3,i3,i2,1p2e11.3)') &
+!                               i,jx,jy,jz,k,cxzp(jx,jy,jz,k)
+!               enddo
+!            enddo
+!         enddo
+!      enddo
 !***
 
 ! check if we can skip recomputation of Green-function coefficients
@@ -262,7 +301,7 @@
       ENDIF
 
 !*** diagnostic
-!      write(0,*)'recompute Green-function coefficients'
+!      write(0,*)'eself_v7 ckpt 2: recompute Green-function coefficients'
 !***
 ! AKD.NE.WOLD :
 
@@ -278,13 +317,13 @@
       AKD2=AKD*AKD
 
 ! We assume screening function exp(-(gamma*kr)^4) so
-! range/d = 1/(gamma*kd) = 2000 if gamma=1e-3 and kd=0.5
+! range/d = 1/(gamma*kd) = 400 if gamma=5e-3 and kd=0.5
 ! although the sums are actually continued out to
-! r/d = 2/(gamma*kd) = 4000 if gamma=1e-3, kd=0.5
+! r/d = 2/(gamma*kd) = 800 if gamma=5e-3, kd=0.5
 ! [screening factor = exp(-16)=1.1e-7]
 
-! PYD*d(2) = periodicity in Y direction
-! PZD*d(3) = periodicity in Z direction
+! PYDDX=PYD*DX(2) = periodicity in Y direction
+! PZDDX=PZD*DX(3) = periodicity in Z direction
 
       IF(PYD>0._WP.OR.PZD>0._WP)THEN
          WRITE(CMSGNM,FMT='(A,2F8.2,A,1PE9.2)')'PBC with PYD, PZD=',PYD, &
@@ -298,7 +337,7 @@
 !               Compute the actual coefficients:
 
 ! Compute 6 independent elements of 3x3 symmetric matrix A_jk,where
-! A_jk*P_k = -electric field at location j due to dipole P_k at location
+! A_jk*P_k = -electric field at location j due to dipole P at location k
 
 ! A_jk = (a_1  a_2  a_3)
 !        (a_2  a_4  a_5)
@@ -317,17 +356,14 @@
 ! Later obtain A_jk values for other octants by using symmetry
 
 !*** diagnostic
-!         write(0,*)'eself ckpt 2'
+!         write(0,*)'eself_v7 ckpt 3: call DIRECT_CALC'
 !***
         CALL DIRECT_CALC(1,1,1,NX,NY,NZ,IPBC,DX,AK,AKD,AKD2,GAMMA, &
                          PYDDX,PZDDX,CXZC(1,1,1,1))
 !*** diagnostic
-!         write(0,*)'eself ckpt 3'
-!***
-
-!*** diagnostic
-!        write(0,*)'returned from direct_calc'
-!        write(0,*)'check for NaN...'
+!        write(0,*)'eself_v7 ckpt 4'
+!        write(0,*)'   returned from direct_calc'
+!        write(0,*)'   check for NaN...'
 !        jr=0
 !        do i=1,nx
 !           do j=1,ny
@@ -367,19 +403,19 @@
         ISYM(2)=1
         ISYM(3)=1
 !*** diagnostic
-!        write(0,*)'eself ckpt 4, about to call EXTEND'
+!        write(0,*)'eself_v7 ckpt 5, about to call EXTEND'
 !***
         CALL EXTND(CXZC(1,1,1,1),NX,NY,NZ,ISYM,CXZW(1,1,1,1))
 !*** diagnostic
-!        write(0,*)'eself ckpt 5, returned from EXTEND'
+!        write(0,*)'eself_v7 ckpt 6, returned from EXTEND'
 !***
         IF(CMETHD=='GPFAFT')THEN
 !*** diagnostic
-!           write(0,*)'eself ckpt 6'
+!           write(0,*)'eself_v7 ckpt 7'
 !***
            CALL CXFFT3N(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
 !*** diagnostic
-!           write(0,*)'eself ckpt 7'
+!           write(0,*)'eself_v7 ckpt 8'
 !**
         ELSEIF(CMETHD=='FFTW21')THEN
            CALL CXFFTW(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
@@ -387,7 +423,7 @@
            CALL CXFFT3_MKL(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
         ENDIF
 !*** diagnostic
-!        write(0,*)'eself ckpt 7.1, about to call TRIM'
+!        write(0,*)'eself_v7 ckpt 9, about to call TRIM'
 !***
         CALL TRIM(CXZW(1,1,1,1),NX,NY,NZ,CXZC(1,1,1,1))
 !*** diagnostic
@@ -402,16 +438,16 @@
         ISYM(2)=-1
         ISYM(3)=1
 !*** diagnostic
-!        write(0,*)'eself ckpt 7.2, about to call EXTND'
+!        write(0,*)'eself_v7 ckpt 10, about to call EXTND'
 !***
         CALL EXTND(CXZC(1,1,1,2),NX,NY,NZ,ISYM,CXZW(1,1,1,1))
         IF(CMETHD=='GPFAFT')THEN
 !*** diagnostic
-!           write(0,*)'eself ckpt 7.3, about to call cxfft3n'
+!           write(0,*)'eself_v7 ckpt 11, about to call cxfft3n'
 !***
            CALL CXFFT3N(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
 !*** diagnostic
-!          write(0,*)'eself ckpt 7.4, returned from cxfft3n'
+!          write(0,*)'eself_v7 ckpt 12, returned from cxfft3n'
 !***
         ELSEIF(CMETHD=='FFTW21')THEN
            CALL CXFFTW(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
@@ -419,7 +455,7 @@
            CALL CXFFT3_MKL(CXZW(1,1,1,1),2*NX,2*NY,2*NZ,+1)
         ENDIF
 !*** diagnostic
-!        write(0,*)'eself ckpt 7.5, about to call TRIM'
+!        write(0,*)'eself_v7 ckpt 13, about to call TRIM'
 !***
         CALL TRIM(CXZW(1,1,1,1),NX,NY,NZ,CXZC(1,1,1,2))
 !*** diagnostic
@@ -507,11 +543,14 @@
 ! for single target no longer apply because of position-dependent phases
 ! of replica dipoles.
 
+!*** diagnostic
+!         write(0,*)'eself_v7 ckpt 14'
+!*** 
         CALL DIRECT_CALC(-1,-1,-1,NX,NY,NZ,IPBC,DX,AK,AKD,AKD2,GAMMA, &
                          PYDDX,PZDDX,CXZC(1,1,1,1))
 
 !*** diagnostic
-!        write(0,*)'eself ckpt 8'
+!        write(0,*)'eself_v7 ckpt 15'
 !***
 ! The array CXZC(1-2*NX,1-2*NY,1-2*NZ,1-6) of A matrix coefficients
 ! now covers all octants.
@@ -529,22 +568,22 @@
         ENDDO
 
 !*** diagnostic
-!        write(0,*)'eself ckpt 9'
+!        write(0,*)'eself_v7 ckpt 16'
 !***
 
 ! CXZC now contains the full Fourier transform of the A convolution
 ! and should not be overwritten between calls to ESELF
 
       ENDIF
-      CALL TIMEIT('ESELF (first call)',DTIME)
-      CALL TIMEIT('ESELF',DTIME)
+!      CALL TIMEIT('ESELF (first call)',DTIME)
+!      CALL TIMEIT('ESELF',DTIME)
 !-----------------------------------------------------------------------
 
 ! End of recomputation of Green-function coefficients
 
 70    CONTINUE
 !*** diagnostic
-!      write(0,*)'eself ckpt 10'
+!      write(0,*)'eself_v7 ckpt 17'
 !****
 ! Fourier transform the polarizations:
 
@@ -552,7 +591,7 @@
          CALL PAD(CXZP(1,1,1,M),NX,NY,NZ,CXZW(1,1,1,M))
 
 !*** diagnostic
-!        write(0,*)'eself ckpt 11: returned from PAD: ', &
+!        write(0,*)'eself_v7 ckpt 18: returned from PAD: ', &
 !                  'check cxzw for NaN or overflow...'
 !        jr=0
 !        do i=1,2*nx
@@ -566,7 +605,7 @@
 !              enddo
 !           enddo
 !        enddo
-!        write(0,*)'eself ckpt 12: cxzw checked for NaN or overflow: ', &
+!        write(0,*)'eself_v7 ckpt 19: cxzw checked for NaN or overflow: ', &
 !                  jr,' instances found'
 !        if(jr>0)stop
 !***
@@ -574,7 +613,7 @@
         IF(CMETHD=='GPFAFT')THEN
            CALL CXFFT3N(CXZW(1,1,1,M),2*NX,2*NY,2*NZ,+1)
 !*** diagnostic
-!        write(0,*)'eself ckpt 13: returned from CXFFT3N: ', &
+!        write(0,*)'eself_v7 ckpt 20: returned from CXFFT3N: ', &
 !                  'check cxzw for NaN or overflow...'
 !        jr=0
 !        do i=1,2*nx
@@ -588,7 +627,7 @@
 !              enddo
 !           enddo
 !        enddo
-!        write(0,*)'eself ckpt 14: cxzw checked for NaN or overflow',jr, &
+!        write(0,*)'eself_v7 ckpt 21: cxzw checked for NaN or overflow',jr, &
 !                  ' instances found'
 !        if(jr>0)stop
 !***
@@ -598,7 +637,9 @@
             CALL CXFFT3_MKL(CXZW(1,1,1,M),2*NX,2*NY,2*NZ,+1)
          ENDIF
       ENDDO
-
+!*** diagnostic
+!      write(0,*)'eself_v7 ckpt 22'
+!***
 !***********************************************************************
 
 ! Multiply by F.t. of Green function.
@@ -606,7 +647,7 @@
       IF(IPBC==0)THEN
 
 !*** diagnostic
-!         write(0,*)'eself ckpt 15, check cxzc(i,j,k,m=1,6)'
+!         write(0,*)'eself_v7 ckpt 23, check cxzc(i,j,k,m=1,6)'
 !        jr=0
 !        do i=1,2*nx
 !           do j=1,2*ny
@@ -621,10 +662,10 @@
 !              enddo
 !           enddo
 !        enddo
-!        write(0,*)'eself ckpt 16: cxzc(i,j,k,m=1-6) checked for NaN ', &
+!        write(0,*)'eself_v7 ckpt 24: cxzc(i,j,k,m=1-6) checked for NaN ', &
 !                  'or overflow: ',jr,' instances found'
 !        if(jr>0)stop
-!        write(0,*)'eself ckpt 17: check cxzw(i,j,k,m=1-3)'
+!        write(0,*)'eself_v7 ckpt 25: check cxzw(i,j,k,m=1-3)'
 !        jr=0
 !        do i=1,2*nx
 !           do j=1,2*ny
@@ -639,7 +680,7 @@
 !              enddo
 !           enddo
 !        enddo
-!        write(0,*)'eself ckpt 18: cxzw(i,j,k,m=1-3) checked for NaN or ', &
+!        write(0,*)'eself_v7 ckpt 26: cxzw(i,j,k,m=1-3) checked for NaN or ', &
 !                  'overflow: ',jr,' instances found'
 !        if(jr>0)stop
 !***
@@ -649,28 +690,28 @@
 !            stored, but can recover others using symmetry.
 
 #ifdef openmp
-!$omp parallel do                                          &
-!$omp& private(K,J,I,KSGN,KR,JSGN,JR,ISGN,IR)              &
-!$omp& private(CXXX,CXXY,CXXZ,CXYY,CXYZ,CXZZ,CXEX,CXEY,CXEZ)
+!$OMP PARALLEL DO                                            &
+!$OMP&   PRIVATE(K,J,I,KSGN,KR,JSGN,JR,ISGN,IR)              &
+!$OMP&   PRIVATE(CXXX,CXXY,CXXZ,CXYY,CXYZ,CXZZ,CXEX,CXEY,CXEZ)
 #endif
 
         DO K=1,2*NZ
            KSGN=NINT(SIGN(1._WP,NZ+1.5_WP-K))
            KR=MIN(K,2*NZ+2-K)
 !*** diagnostic
-!          write(0,*)'K,KSGN,KR=',K,KSGN,KR
+!         write(0,*)'eself_v7 ckpt 27'
 !***
            DO J=1,2*NY
               JSGN=NINT(SIGN(1._WP,NY+1.5_WP-J))
               JR=MIN(J,2*NY+2-J)
 !*** diagnostic
-!            write(0,*)'   J,JSGN,JR=',J,JSGN,JR
+!         write(0,*)'eself_v7 ckpt 28'
 !***
               DO I=1,2*NX
                  ISGN=NINT(SIGN(1._WP,NX+1.5_WP-I))
                  IR=MIN(I,2*NX+2-I)
 !*** diagnostic
-!              write(0,*)'       I,ISGN,IR=',I,ISGN,IR
+!         write(0,*)'eself_v7 ckpt 29'
 !***
                  CXXX=CXZC(IR,JR,KR,1)
                  CXXY=CXZC(IR,JR,KR,2)*(ISGN*JSGN)
@@ -735,17 +776,25 @@
             ENDDO
          ENDDO
 
+!*** diagnostic
+!         write(0,*)'eself_v7 ckpt 30'
+!***
+
 #ifdef openmp
-!$omp end parallel do
+!$OMP END PARALLEL DO
 #endif
 
       ELSEIF(IPBC==1)THEN
 
+!*** diagnostic
+!         write(0,*)'eself_v7 ckpt 31'
+!***
+
 ! If IPBC=1, then the full F.t. of the Green function has been stored.
 
 #ifdef openmp
-!$omp parallel do                                                &
-!$omp& private(K,J,I,CXXX,CXXY,CXXZ,CXYY,CXYZ,CXZZ,CXEX,CXEY,CXEZ)
+!$OMP PARALLEL DO                                                  &
+!$OMP&   PRIVATE(K,J,I,CXXX,CXXY,CXXZ,CXYY,CXYZ,CXZZ,CXEX,CXEY,CXEZ)
 #endif
 
          DO K=1,2*NZ
@@ -768,7 +817,7 @@
          ENDDO
 
 #ifdef openmp
-!$omp end parallel do
+!$OMP END PARALLEL DO
 #endif
 
       ENDIF
@@ -784,6 +833,9 @@
             CALL CXFFT3_MKL(CXZW(1,1,1,M),2*NX,2*NY,2*NZ,-1)
          ENDIF
 
+!*** diagnostic
+!         write(0,*)'eself_v7 ckpt 32'
+!***
 !***********************************************************************
 
 ! Note: the Convex FFT routine already normalizes result.
@@ -801,7 +853,8 @@
             FAC=1._WP/REAL(NGRID,KIND=WP)
 
 #ifdef openmp
-!$omp parallel do private(k,j,i)
+!$OMP PARALLEL DO     &
+!$OMP&   PRIVATE(I,J,K)
 #endif
 
             DO K=1,NZ
@@ -810,10 +863,12 @@
                      CXZE(I,J,K,M)=FAC*CXZW(I,J,K,M)
                   ENDDO
                ENDDO
+
+
             ENDDO
 
 #ifdef openmp
-!$omp end parallel do
+!$OMP END PARALLEL DO
 #endif
 
          ENDIF
@@ -863,94 +918,126 @@
 
       DATA CXZERO/(0._WP,0._WP)/
 !***********************************************************************
+
 #ifdef openmp
-!$omp parallel
-!$omp do private(k,j,i)
+!$OMP PARALLEL              & 
+!$OMP&   PRIVATE(I,J,J2,K,K2)
+!$OMP DO
 #endif
+
       DO K=1,NZ
+
          DO J=1,NY
             DO I=1,NX
                CXB(I,J,K)=CXA(I,J,K)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp enddo
+!$OMP ENDDO
 #endif
 
 !-----------------------------------------------------------------------
 ! x -> -x
 
-#ifdef openmp
 !btd 080627 moved I=NX+1 out of loop
-!$omp single
-#endif
-      CXB(NX+1,1:NY,1:NZ)=CXZERO
+! the SINGLE directive specifies that enclosed code is to be executed
+! by only one thread in the team
+
 #ifdef openmp
-!$omp end single
-!$omp do private(k,j,i)
+!$OMP SINGLE
 #endif
+
+      CXB(NX+1,1:NY,1:NZ)=CXZERO
+
+#ifdef openmp
+!$OMP END SINGLE
+!$OMP DO 
+#endif
+
       DO K=1,NZ
+
          DO J=1,NY
             DO I=NX+2,2*NX
                CXB(I,J,K)=CXA(2*NX+2-I,J,K)*ISYM(1)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
 
 !-----------------------------------------------------------------------
 ! y -> -y
 
 !btd 080627 moved J=NY+1 out of loop, switched order of loops I and J
+! the SINGLE directive specifies that enclosed code is to be executed
+! by only one thread in the team
+
 #ifdef openmp
-!$omp single
+!$OMP SINGLE
 #endif
+
       CXB(1:2*NX,NY+1,1:NZ)=CXZERO
+
 #ifdef openmp
-!$omp end single
-!$omp do private(k,j,i) private(j2)
+!$OMP END SINGLE
+!$OMP DO 
 #endif
+
       DO K=1,NZ
+
          DO J=NY+2,2*NY
             J2=2*NY+2-J
             DO I=1,2*NX
                CXB(I,J,K)=CXB(I,J2,K)*ISYM(2)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
 #endif
 
 !-----------------------------------------------------------------------
 ! z -> -z
 
-#ifdef openmp
 !Art pulling the 3rd dimension to the outer most loop.
 !Art we'll do this expression in only the thread that has NZ+1
 !btd 080627 reorder loops: J,I,K -> K,J,I
-!
-!$omp single
-#endif
-      CXB(1:2*NX,1:2*NY,NZ+1)=CXZERO
+! the SINGLE directive specifies that enclosed code is to be executed
+! by only one thread in the team
+
 #ifdef openmp
-!$omp end single
-!$omp do private(k,j,i) private(k2)
+!$OMP SINGLE
 #endif
+
+      CXB(1:2*NX,1:2*NY,NZ+1)=CXZERO
+
+#ifdef openmp
+!$OMP END SINGLE
+!$OMP DO 
+#endif
+
       DO K=NZ+2,2*NZ
+
          K2=2*NZ+2-K
          DO J=1,2*NY
             DO I=1,2*NX
                CXB(I,J,K)=CXB(I,J,K2)*ISYM(3)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp end parallel
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
       RETURN
@@ -986,21 +1073,28 @@
 !***********************************************************************
 
 #ifdef openmp
-!$omp parallel do          &
-!$omp&    private(k,j,i)   &
-!$omp&    shared(NX,NY,NZ) &
-!$omp&    shared(CXA,CXB)
+!$OMP PARALLEL             &
+!$OMP&    PRIVATE(I,J,K)   &
+!$OMP&    SHARED(NX,NY,NZ) &
+!$OMP&    SHARED(CXA,CXB)
+!$OMP DO
 #endif
+
       DO K=1,NZ+1
+
          DO J=1,NY+1
             DO I=1,NX+1
                CXA(I,J,K)=CXB(I,J,K)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp end parallel do
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
+
       RETURN
     END SUBROUTINE TRIM
 
@@ -1029,31 +1123,41 @@
       SAVE CXZERO
       DATA CXZERO/(0._WP,0._WP)/
 !***********************************************************************
+
 #ifdef openmp
-!$omp parallel
-!$omp do private(k,j,i)
+!$OMP PARALLEL        &
+!$OMP&   PRIVATE(I,J,K)
+!$OMP DO
 #endif
+
       DO K=1,2*NZ
+
          DO J=1,2*NY
             DO I=1,2*NX
                CXB(I,J,K)=CXZERO
             ENDDO
+
          ENDDO
       ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp do private(k,j,i)
+!$OMP END DO
+!$OMP DO
 #endif
+
       DO K=1,NZ
+
          DO J=1,NY
             DO I=1,NX
                CXB(I,J,K)=CXA(I,J,K)
             ENDDO
          ENDDO
+
       ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp end parallel
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
       RETURN
@@ -1064,6 +1168,7 @@
     SUBROUTINE DIRECT_CALC(IX,IY,IZ,NX,NY,NZ,IPBC,DX,AK,AKD,AKD2,GAMMA, &
                            PYDDX,PZDDX,CXZC)
       USE DDPRECISION,ONLY: WP
+      USE DDCOMMON_0,ONLY: IDIPINT
       USE DDCOMMON_10,ONLY: MYID
 #ifdef openmp
       USE OMP_LIB   !! Art omp v2.0 supplies variable and function definitions
@@ -1082,14 +1187,22 @@
 
 ! local variables
 
-      CHARACTER :: CMSGNM*70
+      CHARACTER :: CMSGNM*66
       INTEGER :: I,ICXZC,II,IMIN,J,JCXZC,JJ,JMIN,JPY,JPYM,JPZ,JPZM, &
                  K,KCXZC,KMIN,M
-      REAL(WP) :: GAMMAKD4,PHASY,PHASYZ,R,R2,R3,RANGE,RANGE2,RJPY, &
-                  RJPZ,T0,T1,T2,X0,X2,X2Y2,XX,Y0,Y2,Z0
+      REAL(WP) :: CIMINUS,CIPLUS,COSKFR,COSKR,GAMMAKD4,KF,KFR,KR,           &
+                  PHASY,PHASYZ,PI,R,R2,R3,RANGE,RANGE2,RJPY,RJPZ,           &
+                  SIMINUS,SIPLUS,SINKFR,SINKR,T0,T1,T2,X0,X2,X2Y2,XX,Y0,Y2,Z0
       REAL(WP) :: X(3)
-      COMPLEX(WP) :: CXFAC,CXI,CXPHAS,CXTERM,CXZERO
+      COMPLEX(WP) :: CX2PIH,CXA0,CXA1,CXA2,CXEXPIKR,CXFAC, &
+                     CXG0,CXG1,CXG2,CXI,CXIKR,CXPHAS,CXZERO
+                     
       COMPLEX(WP) :: DCXSUM(6)
+
+#ifdef openmp
+      INTEGER NTHREADS,TID
+#endif
+
       SAVE CXZERO,CXI
       DATA CXI/(0._WP,1._WP)/,CXZERO/(0._WP,0._WP)/
 
@@ -1108,13 +1221,26 @@
 !                  -1,-1, 1              all I, all J, K>0
 !                  -1,-1,-1              all I, all J, all K
 
-!        IPBC     = 0 if only doing first octant (IX=IY=IZ=1)
-!                 = 1 otherwise
-!                   N.B.: IPBC affects dimensioning of CXZC
-
 !        NX,NY,NZ = size of first octant (I = 1 -> NX,
 !                                         J = 1 -> NY,
 !                                         K = 1 -> NZ)
+
+!        IPBC     = 0 for isolated target
+!                 = 1 to use periodic boundary conditions
+!                     (y direction, z direction, or both y and z directions)
+!                   N.B.: IPBC affects dimensioning of CXZC
+
+!        GAMMA     = real coefficient used to assist convergence of sums
+!                    over replica dipoles by suppressing long-range
+!                    contributions with factor exp(-gamma*(kr)^2)
+!                    typical value gamma = 0.005
+!                    The effective
+!                    range/d = 1/(gamma*k*d) = 400 if gamma=5e-3 and kd=0.5
+!                    range/lambda = 1/(2*pi*gamma) = 31.8
+!                    The sums are actually continued out to
+!                    r/d = 2*/(gamma*kd) = 800 if gamma=5e-3 , kd=0.5
+!                    [screening factor = exp(-16)=1.1e-7]
+!
 !        PYDDX     = period of lattice in y direction/d
 !        PZDDX     = period of lattice in z direction/d
 !        DX(1-3)   = lattice spacing in x,y,z direction, in units of
@@ -1124,6 +1250,19 @@
 !        CXZC      = array with dimensions
 !                    (NX+1)*(NY+1)*(NZ+1)*6 if IPBC=0
 !                    (2*NX)*(2*NY)*(2*NZ)*6 if IPBC=1
+!
+! and through module DDCOMMON_0:
+!
+!	 IDIPINT   = 0 for point dipole interaction method
+!		   = 1 for filtered coupled dipole (FCD) interaction method 
+
+! returns:
+!        CXZC(I,J,K,M) = a_M to calculate E field at (I,J,K)
+!                        produced by dipole P at (1,1,1) and replica dipoles
+!                        if IPBC > 0
+!                        -E_x = a_1*P_x + a_2*P_y + a_3*P_z
+!                        -E_y = a_2*P_x + a_4*P_y + a_5*P_z
+!                        -E_z = a_3*P_x + a_5*P_y + a_6*P_z 
 
 ! JPYM = maximum number of periods in Y direction
 !        rmax = JPYM*PYDDX
@@ -1148,12 +1287,38 @@
 ! 08.06.05 (ASL) v7.0.6: 
 !                * Arthur S. Lazanoff added OpenMP directives
 ! 08.07.02 (BTD) * Added call to CPU_TIME(T0) outside of PARALLEL region
-!                
+! 12.04.16 (BTD) v7.2:
+!                * add check to verify number of OpenMP threads               
+! 12.07.06 (BTD) v7.2.3 edited comments
+! 12.08.02 (IYW) added DIPINT to arg list and FCD Green's coefficients
+! 12.08.10 (BTD) **** need to examine how these changes affect OpenMP ***
+! 12.08.11 (BTD) v7.3 and eself_v7
+!                * removed DIPINT from argument list
+!                * added IDIPINT from module DDCOMMON_0
+! 12.12.21 (BTD) * cosmetic changes, added comments
+! 12.12.27 (BTD) * corrected errors in case IDPINT=1 (FILTRDD)
+!                * added comments relating code to notation of
+!                  Gay-Balmaz & Martin (2002) [Comp. Phys. Comm. 144, 111] 
+!                  and Yurkin, Min & Hoekstra (2010) [PRE 82, 036703]
+! 12.12.29 (BTD) * added phase correction for DIPINT=1
+!                  (needed for PBC calculations)
+! 13.01.05 (BTD) * OpenMP bug fix: add ICXZC to list of PRIVATE variables
+!                  change
+!                  PRIVATE(JCXZC,JPZM,KCXZC)               &
+!                  to
+!                  PRIVATE(ICXZC,JCXZC,JPZM,KCXZC)         &
+! 13.01.07 (BTD) * corrected typo PRIVATE(ICXCZ -> PRIVATE(ICXZC
+!                  (noted 13.01.07 by Zhenpeng Qin)
 ! end history
+! Copyright (C) 1993,1994,1996,1997,1999,2000,2003,2004,2005,2006,2007,
+!               2008,2011,2012,2013 B.T. Draine and P.J. Flatau
+! This code is covered by the GNU General Public License.
 !-----------------------------------------------------------------------
-!*** diagnostic
-!      write(0,*)'direct_calc ckpt 1'
-!***
+! PI and KF are used if IDIPINT=1 (filtered coupled dipole)
+
+      PI=4.D0*DATAN(1.D0)
+      KF=PI
+
       GAMMAKD4=(GAMMA*AKD)**4
       RANGE=2._WP/(GAMMA*AKD)
       RANGE2=RANGE*RANGE
@@ -1164,6 +1329,7 @@
       ENDIF
 
 !*** diagnostic
+!      write(0,*)'eself_v7 direct_calc ckpt 1'
 !      write(0,*)'jpym=',jpym
 !***
 ! Compute 6 independent elements of 3x3 symmetric matrix A_jk, where
@@ -1189,31 +1355,58 @@
       IMIN=1+(1-NX)*(1-IX)/2
       JMIN=1+(1-NY)*(1-IY)/2
       KMIN=1+(1-NZ)*(1-IZ)/2
-#ifdef openmp
-      if(myid==0.and.omp_get_thread_num()==0)then
-!Art omp_get_num_threads is an integer function defined in omp_lib
-         write(0,*)'direct_calc ckpt 1: omp_get_num_threads = ', &
-                   omp_get_num_threads()
-!         write(0,*)'DIRECT_CALC: kmin, nz = ',kmin,nz,nz-kmin+1
-!         write(0,*)'DIRECT_CALC: jmin, ny = ',jmin,ny,ny-jmin+1
-!         write(0,*)'DIRECT_CALC: imin, nx = ',imin,nx,nx-imin+1
-      endif
-#endif
+
+!*** diagnostic
+!      write(0,*)'eself_v7 direct_calc ckpt 2'
+!***
 
 ! Determine elapsed cpu time for these sums
 
       CALL CPU_TIME(T0)
 
 #ifdef openmp
-!$omp parallel
-!$omp do                                                 &
-!$omp&   private(K,J,I,M,JPY,JPZ,II)                     &
-!$omp&   private(JCXZC,JPZM,KCXZC)                       &
-!$omp&   private(PHASY,PHASYZ,R2,R3,RJPY,RJPZ)           &
-!$omp&   private(X,X0,X2,X2Y2,XX,Y0,Y2,Z0)               &
-!$omp&   private(CXFAC,CXTERM,CXPHAS,DCXSUM)
+! fork a team of threads 
+!$OMP PARALLEL               &
+!$OMP&   PRIVATE(NTHREADS,TID)
+
+      TID=OMP_GET_THREAD_NUM()
+
+!*** diagnostic
+!      write(0,*)'eself_v7 direct_calc ckpt 3: hello world from thread = ',TID
+!***
+! only master thread does this:
+
+      IF(TID.EQ.0)THEN
+         NTHREADS=OMP_GET_NUM_THREADS()
+         WRITE(CMSGNM,FMT='(A,I3)')'number of OpenMP threads =',NTHREADS
+         CALL WRIMSG('DIRECT_CALC',CMSGNM)
+      ENDIF
+!$OMP END PARALLEL
 #endif
+
+! 2013.01.04 (BTD) Zhenpen Qin reports error within following parallelization
+! 2013.01.05 (BTD) ICXZC was inadvertently omitted from PRIVATE variables list
+!                  add it: change
+!                  PRIVATE(JCXZC,JPZM,KCXZC) to
+!                  PRIVATE(ICXZC,JCXZC,JPZM,KCXZC)
+#ifdef openmp
+! 2012.04.27 (BTD) added R to private variables
+!                  removed FLUSH directive (should not be needed)
+!$OMP PARALLEL                                       &
+!$OMP&   PRIVATE(I,II,J,JJ,JPY,JPZ,K,M)              &
+!$OMP&   PRIVATE(ICXZC,JCXZC,JPZM,KCXZC)             &
+!$OMP&   PRIVATE(CIMINUS,CIPLUS,COSKFR,COSKR,KFR,KR) &
+!$OMP&   PRIVATE(PHASY,PHASYZ,R,R2,R3,RJPY,RJPZ)     &
+!$OMP&   PRIVATE(SIMINUS,SIPLUS,SINKFR,SINKR)        &
+!$omp&   PRIVATE(X,X0,X2,X2Y2,XX,Y0,Y2,Z0)           &
+!$OMP&   PRIVATE(CX2PIH,CXA0,CXA1,CXA2)              &
+!$OMP&   PRIVATE(CXEXPIKR,CXFAC,CXG0,CXG1,CXG2)      &
+!$OMP&   PRIVATE(CXIKR,CXPHAS,DCXSUM)
+!$OMP DO
+#endif
+
       DO K=KMIN,NZ              !- loop over K
+
          Z0=REAL(K-1,KIND=WP)*DX(3)
          IF(K>0)THEN
             KCXZC=K
@@ -1245,6 +1438,12 @@
                DO M=1,6
                   DCXSUM(M)=CXZERO
                ENDDO
+
+!*** diagnostic
+!               write(0,*)'eself_v7 ckpt 4'
+!               write(0,*)'   x2=',x2
+!               write(0,*)'   jpym=',jpym
+!***
 
 ! JPY=0, JPZ=0 gives E field from dipole at (1,1,1)
 ! general JPY,JPZ gives E field from dipole at
@@ -1291,13 +1490,23 @@
 ! PHASYZ = phase at (1,JPY*NPY+1,JPZ*NPZ+1) - phase at (1,1,1)
 
                         PHASYZ=PHASY+AK(3)*RJPZ
+                        KR=AKD*R
+                        CXIKR=CXI*KR
 
 ! include artificial factor exp[-(gamma*kr)^4] to assist convergence
 
-                        CXTERM=CXI*AKD*R
-                        CXPHAS=EXP(CXTERM+CXI*PHASYZ-GAMMAKD4*R2*R2)/R3
-                        CXFAC=(1._WP-CXTERM)/R2
+			IF(IDIPINT==0)THEN
 
+                           CXPHAS=EXP(CXIKR+CXI*PHASYZ-GAMMAKD4*R2*R2)/R3
+                           CXFAC=(1._WP-CXIKR)/R2
+
+!*** diagnostic
+!                           write(0,*)'eself_v7 direct_calc ckpt 5'
+!                           write(0,*)'  cxterm=',cxterm
+!                           write(0,*)'  cxphas=',cxphas
+!                           write(0,*)'   cxfac=',cxfac
+!***
+                           
 ! II=1      -> M=1   a_1 (xx)
 !      JJ=2      2   a_2 (xy)
 !         3      3   a_3 (xz)
@@ -1305,25 +1514,110 @@
 !         3      5   a_5 (yz)
 !    3           6   a_6 (zz)
 
-                        M=0
-                        DO II=1,3              !------ loop over II
-                           M=M+1
-                           DCXSUM(M)=DCXSUM(M)-CXPHAS*(AKD2*(X(II)**2-R2)+ &
-                                     CXFAC*(R2-3._WP*X(II)**2))
-                           IF(II<3)THEN
-                              DO JJ=II+1,3        !------- loop over JJ
-                                 M=M+1
-                                 XX=X(II)*X(JJ)
-                                 DCXSUM(M)=DCXSUM(M)-                      &
-                                           CXPHAS*(AKD2*XX-CXFAC*(3._WP*XX))
-                              ENDDO               !------- end loop over JJ
-                           ENDIF
-                        ENDDO                  !------ end loop over II
-                     ENDIF
+                           M=0
+                           DO II=1,3              !------- loop over II
+                              M=M+1
+                              XX=X(II)**2
+                              DCXSUM(M)=DCXSUM(M)-CXPHAS*(AKD2*(XX-R2)+ &
+                                        CXFAC*(R2-3._WP*XX))
+                              IF(II<3)THEN
+                                 DO JJ=II+1,3        !------- loop over JJ
+                                    M=M+1
+                                    DCXSUM(M)=DCXSUM(M)-                          &
+                                              CXPHAS*X(II)*X(JJ)*(AKD2-3._WP*CXFAC)
+                                 ENDDO               !------- end loop over JJ
+                              ENDIF
+                           ENDDO                  !------ end loop over II
+
+			ELSEIF(IDIPINT==1)THEN
+
+! Expressions for the Green coefficients correspond to those in 
+! "A library for computing the filtered and non-filtered 3D Green's tensor 
+!  associated with infinite homogeneous space and surfaces" 
+! by P. Gay-Balmaz and O. Martin (2002; Computer Physics Communications,
+! 144, 111-120) apart from a factor of 4*pi.
+
+                           CXEXPIKR=EXP(CXIKR)
+                           CXPHAS=EXP(CXI*PHASYZ-GAMMAKD4*R2*R2)
+                           KFR=KF*R
+                           CALL CISI(KFR+KR,CIPLUS,SIPLUS)
+                           CALL CISI(KFR-KR,CIMINUS,SIMINUS)
+!*** diagnostic
+!                           write(57,fmt='(1pe10.3,1p2e11.3)')kfr+kr,     &
+!                                                             ciplus,siplus
+!                           write(57,fmt='(1pe10.3,1p2e11.3)')kfr-kr,       &
+!                                                             ciminus,siminus
+!***
+                           COSKR=COS(KR)
+                           SINKR=SIN(KR)
+                           COSKFR=COS(KFR)
+                           SINKFR=SIN(KFR)
+
+! CXA0 = alpha(R) of Gay-Balmaz & Martin 2002
+! CXA1 = (d/dR) alpha   = alpha'
+! CXA2 = (d2/dR2) alpha = alpha"
+
+                           CXA0=SINKR*(CIPLUS-CIMINUS)+ &
+                                COSKR*(PI-SIPLUS-SIMINUS)
+                           CXA1=AKD*SINKR*(-PI+SIPLUS+SIMINUS)+         &
+                                AKD*COSKR*(CIPLUS-CIMINUS)-2._WP*SINKFR/R
+                           CXA2=AKD2*(SINKR*(CIMINUS-CIPLUS)+     &
+                                      COSKR*(SIPLUS+SIMINUS-PI))+ &
+                                2._WP*(SINKFR-KFR*COSKFR)/R2
+
+! Yurkin, Min & Hoekstra 2010 define G_ij such that G_ij*P_j = E field at i
+! so that elements of G_ij are same as elements of our matrix CXZC
+! notation:
+! CXG0   = g_F(R)              of YMH2010
+! CXG1   = (d/dR) g_F   = g_F' of YMH2010
+! CXG2   = (d2/dR2) g_F = g_F" of YMH2010  
+! CX2PIH = 2*pi*h(R)           of YMH2010
+
+! CXG0 = exp(ikR)/R - alpha/(pi*R)
+! CXG1 = exp(ikR)*(-1+ikR)/R^2 - alpha'/(pi*R) + alpha/(pi*R^2)
+! CXG2 = exp(ikR)*(2-2ikR-(kR)^2)/R^3 - (2*alpha-2R*alpha'+R^2*alpha")/(pi*R^3)
+
+                           CXG0=(CXEXPIKR-CXA0/PI)/R
+                           CXG1=(CXEXPIKR*(CXIKR-1._WP)+(CXA0-CXA1*R)/PI)/R2
+                           CXG2=(CXEXPIKR*(2._WP-2._WP*CXIKR-KR**2)- &
+                                 (2._WP*(CXA0-R*CXA1)+R2*CXA2)/PI)/R3
+                           CX2PIH=(SINKFR-KFR*COSKFR)/(PI*R3)
+                           M=0
+                           DO II=1,3   ! do II
+                              M=M+1
+! diagonal elements 
+! II=1: M=1 xx
+! II=2: M=4 yy
+! II=3: M=6 zz
+                              DCXSUM(M)=DCXSUM(M)+CXPHAS*(AKD2*CXG0+ &
+                                        CXG1/R+(2._WP/3._WP)*CX2PIH+ &
+                                        (CXG2/R2-CXG1/R3)*X(II)**2)
+                              IF(II<3)THEN
+                                 DO JJ=II+1,3  ! do JJ
+                                    M=M+1
+! off-diagonal elements
+! II=1: M=2 xy
+! II=1: M=3 xz
+! II=2: M=5 yz
+                                    DCXSUM(M)=DCXSUM(M)+CXPHAS*           &
+                                              (CXG2/R2-CXG1/R3)*X(II)*X(JJ)
+                                 ENDDO  ! enddo JJ
+                              ENDIF
+                           ENDDO  ! enddo II
+			ENDIF  ! end elseif(IDIPINT==1)
+
+                     ENDIF  ! endif(R2 > 1e-6)
                   ENDDO                     !----- end loop over JPZ
                ENDDO                     !---- end loop over JPY
+!*** diagnostic
+!               write(0,*)'eself_v7 direct_calc ckpt 6'
+!               write(0,*)'   icxzc,jcxzc,kcxzc=',icxzc,jcxzc,kcxzc
+!***
                DO M=1,6
                   CXZC(ICXZC,JCXZC,KCXZC,M)=DCXSUM(M)
+!*** diagnostic
+!                  write(0,fmt='(a,i1,a,2f10.4)')'   dcxsum(',m,')=',dcxsum(m)
+!***
                ENDDO
                IF(I==IMIN.AND.J==JMIN.AND.K==KMIN.AND.MYID==0)THEN
 
@@ -1359,20 +1653,27 @@
                      ENDIF
                   ENDIF
                   CALL WRIMSG('DIRECT_CALC',CMSGNM)
-              ENDIF
+               ENDIF
             ENDDO                     !--- end loop over I
          ENDDO                     !-- end loop over J
+
+! 2012.04.27 (BTD) it is not necessary to have a flush(cxzc) here
+!                  flush is implied by both $omp END DO and 
+!                  $omp END PARALLEL directives
+
       ENDDO                     !- end loop over K
+
 #ifdef openmp
-!$omp end do
-!$omp end parallel
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
+
 !*** diagnostic
-!      write(0,*)'direct_calc ckpt 2'
+!      write(0,*)'eself_v7 direct_calc ckpt 7'
 !***
       CALL CPU_TIME(T2)
 !*** diagnostic
-!      write(0,*)'direct_calc ckpt 3'
+!      write(0,*)'eself_v7 direct_calc ckpt 8'
 !***
       T2=T2-T0
       IF(MYID==0)THEN
@@ -1393,53 +1694,60 @@
       ENDIF
 
 !*** diagnostic
-!      write(0,*)'direct_calc ckpt 4'
+!      write(0,*)'eself_v7 direct_calc ckpt 9'
 !***
 
 ! If IPBC=1: set the elements with ICXZC=NX+1 or JCXZC=NY+1
 !            or KCXZC=NZ+1 to zero
 
       IF(IPBC==1)THEN
-#ifdef openmp
-!$omp parallel
-#endif 
+
          DO M=1,6
+
 #ifdef openmp
-!$omp do                    &
-!$omp&   private(KCXZC,JCXZC)
+!$OMP PARALLEL                    &
+!$OMP&   PRIVATE(ICXZC,JCXZC,KCXZC)
+!$OMP DO
 #endif
+
             DO KCXZC=1,2*NZ
                DO JCXZC=1,2*NY
                   CXZC(NX+1,JCXZC,KCXZC,M)=CXZERO
                ENDDO
             ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp do                    &
-!$omp&   private(KCXZC,ICXZC)
+!$OMP END DO
+!$OMP DO
 #endif
+
             DO KCXZC=1,2*NZ
+
                DO ICXZC=1,2*NX
                   CXZC(ICXZC,NY+1,KCXZC,M)=CXZERO
                ENDDO
+
             ENDDO
+
 #ifdef openmp
-!$omp end do
-!$omp do                    &
-!$omp&   private(JCXZC,ICXZC)
+!$OMP END DO
+!$OMP DO
 #endif
+
             DO JCXZC=1,2*NY
+
                DO ICXZC=1,2*NX
                   CXZC(ICXZC,JCXZC,NZ+1,M)=CXZERO
                ENDDO
+
             ENDDO
+
 #ifdef openmp
-!$omp end do
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
+
          ENDDO
-#ifdef openmp
-!$omp end parallel
-#endif
  
       ENDIF
       RETURN

@@ -128,6 +128,9 @@
 !                RNRM=DNORM2_BCG(N,WORK(1:N,R))
 !                -> RNRM=DNORM2_BCG(N,WORK(1,R))
 ! 08.07.16 (BTD) Added DDCOMMON_9 to communicate ITERMX and ITERN
+! 10.04.30 (BTD) Modified manner in which number of iterations is
+!                limited (previous treatment had return without
+!                error message when ITERN=ITERMX/4)
 ! end history
       IMPLICIT NONE
 
@@ -176,6 +179,10 @@
 !---------------------------------------------------------------------------
 !*** diagnostic
 !      write(0,*)'zbcg2wp ckpt 1'
+!      write(0,*)'   j  ------ x(j) --------'
+!      do k=1,n
+!         write(0,fmt='(i6,1p2e11.3)')k,x(k)
+!      enddo
 !***
       INFO=0
 
@@ -245,10 +252,15 @@
 
 ! Iterate
 
-      DO WHILE (RNRM>TOLER*RNRM0 .AND. NMATVEC<MXMATVEC)
+! BTD 100430 change
+!      DO WHILE (RNRM>TOLER*RNRM0 .AND. NMATVEC<MXMATVEC)
+      DO WHILE (RNRM>TOLER*RNRM0 .AND. ITERN<=ITERMX)
 
 !BTD 080716:
          ITERN=ITERN+1
+!*** diagnostic
+!         write(0,*)'zbcg2wp ckpt 5: itern=',itern,' itermx=',itermx
+!***
          IF(ITERN>ITERMX)CALL ERRMSG('FATAL','ZBCG2WP',' ITERN>ITERMX')
 !-----------
          
@@ -274,8 +286,6 @@
 !*** diagnostic
 !            write(0,*)'zbcq2wp ckpt 5'
 !***
-!          CALL MATVEC(WORK(1:N,U+K-1),WORK(1:N,U+K),N)
-!           CALL MATVEC(WORK(1:N,U+K-1),WORK(1:N,U+K),IPAR)
            CALL MATVEC(WORK(1,U+K-1),WORK(1,U+K),IPAR)
 !*** diagnostic
 !           write(0,*)'zbcq2wp ckpt 6'
@@ -283,7 +293,6 @@
 !          call precond (n, work(1:n,u+k))
            NMATVEC=NMATVEC+1
 
-!           SIGMA=ZDOT_BCG(N,WORK(1:N,RR),WORK(1:N,U+K))
            SIGMA=ZDOT_BCG(N,WORK(1,RR),WORK(1,U+K))
            IF(SIGMA==ZZERO)THEN
               INFO=2
@@ -296,7 +305,6 @@
            DO J=0,K-1
               WORK(1:N,R+J)=-ALPHA*WORK(1:N,U+J+1)+WORK(1:N,R+J)
            ENDDO
-!           CALL MATVEC(WORK(1:N,R+K-1),WORK(1:N,R+K),IPAR)
            CALL MATVEC(WORK(1,R+K-1),WORK(1,R+K),IPAR)
 !      call precond (n, work(1:n,r+k))
            NMATVEC=NMATVEC+1
@@ -313,7 +321,6 @@
 
         DO I=1,L+1
            DO J=1,I
-!              MATRIX_Z(I,J)=CONJG(ZDOT_BCG(N,WORK(1:N,R+J-1),WORK(1:N,R+I-1)))
               MATRIX_Z(I,J)=CONJG(ZDOT_BCG(N,WORK(1,R+J-1),WORK(1,R+I-1)))
            ENDDO
         ENDDO
@@ -381,8 +388,6 @@
         XPDT=(RNRM<DELTA*RNRM0 .AND. RNRM0<MXNRMX)
         RCMP=((RNRM<DELTA*MXNRMR .AND. RNRM0<MXNRMR).OR. XPDT)
         IF(RCMP)THEN
-!           CALL MATVEC(X,WORK(1:N,R),N)
-!           CALL MATVEC(X,WORK(1:N,R),IPAR)
            CALL MATVEC(X,WORK(1,R),IPAR)
 !   call precond (n, work(1:n,r))
            NMATVEC=NMATVEC+1
@@ -402,12 +407,17 @@
         
         IF(PRINT_RESID)THEN
            WRITE(CMSGNM,FMT='(A,I8,A,1P,E10.3)') &
-                 'IT=',NMATVEC/4,' f.err=',RNRM/RNRM0
+                 'IT=',ITERN,' f.err=',RNRM/RNRM0
+! BTD 100430 why user NMATVEC?
+!                 'IT=',NMATVEC/4,' f.err=',RNRM/RNRM0
            CALL WRIMSG('ZBCG2 ',CMSGNM)
          ENDIF
 
       ENDDO
 
+!*** diagnostic
+!      write(0,*)'zbcg2wp ckpt 10, itern=',itern
+!***
 ! =========================
 ! End of iterations ---
 ! =========================
@@ -418,17 +428,15 @@
 
 ! compute the true residual:
 
-! --------------------- One matvec can be saved by commenting out this:
-!      CALL MATVEC(X,WORK(1:N,R),N)
-!      CALL MATVEC(X,WORK(1:N,R),IPAR)
-      CALL MATVEC(X,WORK(1,R),IPAR)
+! ----------- One matvec can be saved by commenting out this: ---------
+!      CALL MATVEC(X,WORK(1,R),N)
+!----------------------------------------------------------------------
 
+      CALL MATVEC(X,WORK(1,R),IPAR)
       WORK(1:N,R)=RHS(1:N)- WORK(1:N,R)
-!call precond (n,work(1:n,r))
-!      RNRM=DNORM2_BCG(N,WORK(1:N,R))
+!      call precond (n,work(1:n,r))
       RNRM=DNORM2_BCG(N,WORK(1,R))
       NMATVEC=NMATVEC+1
-! --------------------- One matvec can be saved by commenting out this^
 
       TOLER=RNRM/RNRM0
       MXMATVEC=NMATVEC

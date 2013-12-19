@@ -94,18 +94,19 @@
       RETURN
     END SUBROUTINE SHARE0
     
-    SUBROUTINE SHARE1(A1,A2,A3,AEFFA,BETA,BETADF,BETMID,BETMXD,CALPHA,       &
-                      CBINFLAG,CDESCR,CFLEPS,CMDFFT,CMDFRM,CMDSOL,CMDTRQ,    &
-                      CSHAPE,CXE01,CXE02,DAEFF,DX,ENSC,EM1,EM2,ETASCA,GAMMA, &
-                      IANISO,ICOMP,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,   &
-                      IOCC,IORI0,IORTH,IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,IXYZ0, &
-                      JPBC,MXBETA,MXCOMP,MXN3,MXNAT,MXNX,MXNY,MXNZ,MXPBC,    &
-                      MXPHI,MXRAD,MXSCA,MXTHET,MXWAV,MYID,NAT,NAT0,NAT3,     &
-                      NBETA,NBETH,NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA, &
-                      NWAV,NX,NY,NZ,ORDERM,ORDERN,PHI,PHIDF,PHIMID,PHIMXD,   &
-                      PHIN,PYD,PYDDX,PZD,PZDDX,SHPAR,SMIND1,SMIND2,THETA,    &
-                      THETADF,THETAN,THTMID,THTMXD,TOL,WAVEA,WGTA,WGTB,X0,   &
-                      XMAX,XMIN,YMAX,YMIN,ZMAX,ZMIN)
+    SUBROUTINE SHARE1(A1,A2,A3,AEFFA,BETA,BETADF,BETMID,BETMXD,CALPHA,         &
+                      CBINFLAG,CDESCR,CFLEPS,CMDFFT,CMDFRM,CMDSOL,CMDTRQ,      &
+                      CSHAPE,CXE01_LF,CXE02_LF,DAEFF,DX,ENSC_LF,EM1_LF,EM2_LF, &
+                      ETASCA,GAMMA,IANISO,ICOMP,IDVERR,IDVOUT,ILIN10,ILIN12,   &
+                      INIT,IOBIN,IOCC,IORI0,IORTH,IPBC,IRAD0,IWAV0,IWRKSC,     &
+                      IWRPOL,IXYZ0,JPBC,MXBETA,MXCOMP,MXITER,MXN3,MXNAT,       &
+                      MXNX,MXNY,MXNZ,MXPBC,MXPHI,MXRAD,MXSCA,                  &
+                      MXTHET,MXWAV,MYID,NAMBIENT,NAT,NAT0,NAT3,NBETA,NBETH,    &
+                      NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NWAV,NX,NY,NZ, &
+                      ORDERM,ORDERN,PHI,PHIDF,PHIMID,PHIMXD,PHIN,PYD,PYDDX,    &
+                      PZD,PZDDX,SHPAR,SMIND1,SMIND2,THETA,THETADF,THETAN,      &
+                      THTMID,THTMXD,TOL,WAVEA,WGTA,WGTB,X0,XMAX,XMIN,YMAX,     &
+                      YMIN,ZMAX,ZMIN)
 
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
@@ -118,10 +119,10 @@
                    CMDFRM*6,CSHAPE*9,CMDSOL*6,CMDTRQ*6
       CHARACTER(60) :: &
          CFLEPS(MXCOMP)
-      INTEGER :: IANISO,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,IORTH,IORI0,  &
-                 IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,JPBC,MYID,NAT,NAT0,NAT3,     &
-                 NBETA,NBETH,NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NWAV, &
-                 NX,NY,NZ
+      INTEGER :: IANISO,IDVERR,IDVOUT,ILIN10,ILIN12,INIT,IOBIN,    &
+                 IORTH,IORI0,IPBC,IRAD0,IWAV0,IWRKSC,IWRPOL,JPBC,  &
+                 MXITER,MYID,NAT,NAT0,NAT3,NBETA,NBETH,NCOMP,NORI, &
+                 NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NWAV,NX,NY,NZ
       INTEGER*2 ::    &
          ICOMP(MXN3), &
          IOCC(MXNAT)
@@ -129,8 +130,9 @@
          IXYZ0(NAT0,3), &
          SMIND1(9),     &
          SMIND2(9)
-      REAL(WP) :: BETMID,BETMXD,DAEFF,ETASCA,GAMMA,PHIMID,PHIMXD,PYD,PYDDX, &
-                  PZD,PZDDX,THTMID,THTMXD,TOL,XMAX,XMIN,YMAX,YMIN,ZMAX,ZMIN
+      REAL(WP) :: BETMID,BETMXD,DAEFF,ETASCA,GAMMA,NAMBIENT,PHIMID,PHIMXD,   &
+                  PYD,PYDDX,PZD,PZDDX,THTMID,THTMXD,TOL,XMAX,XMIN,YMAX,YMIN, &
+                  ZMAX,ZMIN
       REAL(WP) ::            &
          A1(3),              &
          A2(3),              &
@@ -139,9 +141,9 @@
          BETA(MXBETA),       &
          BETADF(NAT0),       &
          DX(3),              &
-         EM1(3,MXSCA),       &
-         EM2(3,MXSCA),       &
-         ENSC(3,MXSCA),      &
+         EM1_LF(3,MXSCA),       &
+         EM2_LF(3,MXSCA),       &
+         ENSC_LF(3,MXSCA),      &
          ORDERM(MXSCA),      &
          ORDERN(MXSCA),      &
          PHI(MXPHI),         &
@@ -155,9 +157,9 @@
          WGTA(MXTHET,MXPHI), &
          WGTB(MXBETA),       &
          X0(3)
-      COMPLEX(WP) :: &
-         CXE01(3),   &
-         CXE02(3)
+      COMPLEX(WP) ::  &
+         CXE01_LF(3), &
+         CXE02_LF(3)
 !-----------------------------------------------------------------------
       RETURN
     END SUBROUTINE SHARE1

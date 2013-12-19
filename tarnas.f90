@@ -309,7 +309,7 @@
          X0(3)=X0(3)-ZS(JA)*Y
       ENDDO
 ! diagnostic
-      write(0,*)'tarnas ckpt 2, x0=',x0
+!      write(0,*)'tarnas ckpt 2, x0=',x0
 !
 !***********************************************************************
 ! Write target description into string CDESCR
@@ -350,7 +350,7 @@
       CALL WRIMSG('TARNAS',CMSGNM)
       STOP
 
-9020  FORMAT(' >TARNAS multisphere target composed of ',I3,        &
+9020  FORMAT(' multisphere target composed of ',I3,                &
              ' spheres, DIAMX=',F8.4,/,                            &
          I10,3F8.4,' = NAT, alpha_1-3',/,                          &
          3F10.6,' = A_1 vector',/,                                 &

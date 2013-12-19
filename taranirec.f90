@@ -82,9 +82,11 @@
 !                 Added X0 to argument list
 !                 Added code to define X0
 ! 08.08.29 (BTD): Modified format 9020
+! 12.05.14 (BTD): further modified format 9020 to provide enough space
+!                 for x0(1-3) to be written out.
 ! end history
 
-! Copyright (C) 1993,1995,1996,1997,1998,2000,2004,2007,2008
+! Copyright (C) 1993,1995,1996,1997,1998,2000,2004,2007,2008,2010
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -155,13 +157,13 @@
          CLOSE(UNIT=IOSHP)
       ENDIF
       RETURN
-9020  FORMAT (' >TARREC anisotropic rectangular prism; AX,AY,AZ=',3F8.4,/, &
+9020  FORMAT (' >TARREC anisotropic rectangular prism; AX,AY,AZ=',3F9.4,/, &
          I9,' = NAT',/,                                                    &
-         3F9.4,' = A_1 vector',/,                                          &
-         3F9.4,' = A_2 vector',/,                                          &
-         3F9.6,' = lattice spacings (d_x,d_y,d_z)/d',/,                    &
-         3F9.6,' = lattice offset x0(1-3) = (x_TF,y_TF,z_TF)/d ',          &
+         3F10.6,' = A_1 vector',/,                                         &
+         3F10.6,' = A_2 vector',/,                                         &
+         3F10.6,' = lattice spacings (d_x,d_y,d_z)/d',/,                   &
+         3F10.4,' = lattice offset x0(1-3)=(x_TF,y_TF,z_TF)/d ',           &
                'for dipole 0 0 0',/,                                       &
-         '     JA  IX  IY  IZ ICOMP(x,y,z)')
-9030  FORMAT (I7,3I4,3I2)
+         '     JA   IX   IY   IZ ICOMP(x,y,z)')
+9030  FORMAT (I7,3I5,3I2)
     END SUBROUTINE TARANIREC

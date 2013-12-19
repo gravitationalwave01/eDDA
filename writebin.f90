@@ -51,31 +51,34 @@
 !                 However, does not appear to be demand, so such
 !                 changes are postponed indefinitely.
 ! 07.09.11 (BTD): changed IXYZ0 from INTEGER*2 to INTEGER
+! 13.05.02 (BTD): corrected error found by Vasyl Choliy
+!                 IXYZ0(I,J) should only be written for I=1-NAT0,
+!                 not I=1-NAT
 ! end history
-! Copyright (C) 1996,1998,1999,2003,2007 B.T. Draine and P.J. Flatau
+! Copyright (C) 1996,1998,1999,2003,2007,2013 B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 
       IF(IENTRY==0)THEN
-        CALL WRIMSG('WRITEBIN','First call to binary write')
-        IENTRY = 1
+         CALL WRIMSG('WRITEBIN','First call to binary write')
+         IENTRY = 1
 ! General run information:
-        WRITE(IOBIN) CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,CMDTRQ
+         WRITE(IOBIN)CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,CMDTRQ
 ! mostly dimensions:
-        WRITE(IOBIN) IORTH,NX,NY,NZ,NAT0,NAT,NAT3,NSCAT,NCOMP,NORI, &
-          NWAV,NRAD,NTHETA,NPHI,NBETA,NTIMERS
+         WRITE(IOBIN)IORTH,NX,NY,NZ,NAT0,NAT,NAT3,NSCAT,NCOMP,NORI, &
+            NWAV,NRAD,NTHETA,NPHI,NBETA,NTIMERS
 ! maximum dimension (not really needed)
-        WRITE(IOBIN) MXNX,MXNY,MXNZ,MXCOMP,MXSCA
-        WRITE(IOBIN) BETMID,BETMXD,THTMID,THTMXD,PHIMID,PHIMXD
+         WRITE(IOBIN)MXNX,MXNY,MXNZ,MXCOMP,MXSCA
+         WRITE(IOBIN)BETMID,BETMXD,THTMID,THTMXD,PHIMID,PHIMXD
 ! dump scattering angles
-        WRITE(IOBIN) (PHIN(I),I=1,NSCAT),(THETAN(I),I=1,NSCAT)
+         WRITE(IOBIN)(PHIN(I),I=1,NSCAT),(THETAN(I),I=1,NSCAT)
 ! misc run information
-        WRITE(IOBIN) TOL,NAVG
-        WRITE(IOBIN) (WAVEA(I),I=1,NWAV),(AEFFA(I),I=1,NRAD), &
-          (THETA(I),I=1,NTHETA),(BETA(I),I=1,NBETA),(PHI(I),I=1,NPHI), &
-          (A1(I),I=1,3),(A2(I),I=1,3),(ICOMP(I),I=1,NAT3), &
-          (IXYZ0(I,1),I=1,NAT),(IXYZ0(I,2),I=1,NAT),(IXYZ0(I,3),I=1,NAT), &
-          (DX(I),I=1,3)
+         WRITE(IOBIN) TOL,NAVG
+         WRITE(IOBIN) (WAVEA(I),I=1,NWAV),(AEFFA(I),I=1,NRAD),                 &
+            (THETA(I),I=1,NTHETA),(BETA(I),I=1,NBETA),(PHI(I),I=1,NPHI),       &
+            (A1(I),I=1,3),(A2(I),I=1,3),(ICOMP(I),I=1,NAT3),                   &
+            (IXYZ0(I,1),I=1,NAT0),(IXYZ0(I,2),I=1,NAT0),(IXYZ0(I,3),I=1,NAT0), &
+            (DX(I),I=1,3)
 
 ! endif  "if(cbinflag.eq.'USEBIN') then"
       ENDIF
@@ -85,17 +88,17 @@
 ! case of IORTH=1 or 'DOTORQ' some values are "missing"
 ! flatau -->draine  do we need smori for "ppol" do we need cxf_ij ?
 
-      IF(IORI/=0 .AND. CBINFLAG=='ALLBIN')THEN
-        WRITE(IOBIN) IWAV,IRAD,IORI,(TIMERS(I),I=1,NTIMERS)
-        WRITE(IOBIN) AEFF,WAVE,XX,AK1,BETAD,THETAD,PHID,AKR,CXE01R, &
-          CXE02R,(CXRFR(I),I=1,NCOMP),(CXEPS(I),I=1,NCOMP)
-        WRITE(IOBIN) QEXT,QABS,QSCAT,G,QBKSCA,QPHA,QAV,QTRQAB,QTRQSC
+      IF(IORI/=0.AND.CBINFLAG=='ALLBIN')THEN
+         WRITE(IOBIN)IWAV,IRAD,IORI,(TIMERS(I),I=1,NTIMERS)
+         WRITE(IOBIN)AEFF,WAVE,XX,AK1,BETAD,THETAD,PHID,AKR,CXE01R, &
+            CXE02R,(CXRFR(I),I=1,NCOMP),(CXEPS(I),I=1,NCOMP)
+         WRITE(IOBIN)QEXT,QABS,QSCAT,G,QBKSCA,QPHA,QAV,QTRQAB,QTRQSC
 ! write sm as 16 independent matrices (IDL handles 7 subscripts only)
-        DO I = 1,4
-          DO J = 1,4
-            WRITE(IOBIN) (SM(IS,I,J),IS=1,NSCAT)
-          END DO
-        END DO
+         DO I=1,4
+            DO J=1,4
+               WRITE(IOBIN)(SM(IS,I,J),IS=1,NSCAT)
+            ENDDO
+         ENDDO
 ! endif "if(iori. ne. 0 .and. cbinflag.eq.'ALLCDF') then"
       ENDIF
 
@@ -103,7 +106,7 @@
 
 ! BTD 98.05.01 add CONTINUE statement in lieu of actual code
 
-        CONTINUE
+         CONTINUE
 
 ! iori=0 case
 !flatau ---> note. I need to add code for orientational averages

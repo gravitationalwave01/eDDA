@@ -3,6 +3,7 @@
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
 
+!---------------------------- v2 -----------------------------------
 !** Arguments:
 
       CHARACTER :: CDESCR*67,CFLSHP*80
@@ -22,7 +23,7 @@
       PARAMETER (NSPHMX=10000)
       CHARACTER :: CMSGNM*70
       LOGICAL :: OCC
-      INTEGER :: JA,JX,JY,JZ,LMX1,LMX2,LMY1,LMY2,LMZ1,LMZ2,NSPH
+      INTEGER :: IWARN,JA,JX,JY,JZ,LMX1,LMX2,LMY1,LMY2,LMZ1,LMZ2,NSPH
       REAL(WP) :: R2,SCALE,X,XMAX,XMIN,Y,YMAX,YMIN,Z,ZMAX,ZMIN
       REAL(WP) ::     &
          ALPHA(3),    &
@@ -107,7 +108,7 @@
 ! 09.09.09 (BTD) ver7.0.8
 !                added some more running output to help diagnose
 !                fatal errors resulting from problems with input parameters 
-! 10.01.06 (BTD) v7.1.0
+! 10.01.06 (BTD) v2 (for v7.1.0)
 !                * changed to expect input file to have structure
 !                    N = number of spheres
 !                    comment line
@@ -123,19 +124,23 @@
 
 !                * added sanity checks to detect and report input file
 !                  incompatibilities
+! 12.01.31 (BTD) * added code to allow check for sphere overlap
+!                  with warning message for each overlapping dipole
 ! end history
 
-! Copyright (C) 2000,2001,2003,2004,2007,2008,2009,2010
+! Copyright (C) 2000,2001,2003,2004,2007,2008,2009,2010,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 
 ! Read parameters of spheres:
 
-      WRITE(0,*)'>TARNSP open file=',CFLSHP
+      WRITE(0,*)'>TARNSP open file =',CFLSHP
 !-------------------------------------
       OPEN(UNIT=IDVSHP,FILE=CFLSHP)
       READ(IDVSHP,*,ERR=8100)NSPH
+      WRITE(CMSGNM,FMT='(A,I6,A)')'cluster of',NSPH,' spheres'
+      CALL WRIMSG('TARNSP',CMSGNM)
       IF(NSPH>NSPHMX)THEN
 !-------------------------------------
 ! 09.09.09 (BTD) added code ----------
@@ -171,7 +176,7 @@
       YMAX=YS(1)+AS(1)
       ZMIN=ZS(1)-AS(1)
       ZMAX=ZS(1)+AS(1)
-      IF(NSPH>1) THEN
+      IF(NSPH>1)THEN
          DO JA=2,NSPH
             IF(XS(JA)-AS(JA)<XMIN)XMIN=XS(JA)-AS(JA)
             IF(XS(JA)+AS(JA)>XMAX)XMAX=XS(JA)+AS(JA)
@@ -181,16 +186,28 @@
             IF(ZS(JA)+AS(JA)>ZMAX)ZMAX=ZS(JA)+AS(JA)
          ENDDO
       ENDIF
+      WRITE(CMSGNM,FMT='(A,F10.5)')'XMIN=',XMIN
+      CALL WRIMSG('TARNSP',CMSGNM)
+      WRITE(CMSGNM,FMT='(A,F10.5)')'XMAX=',XMAX
+      CALL WRIMSG('TARNSP',CMSGNM)
+      WRITE(CMSGNM,FMT='(A,F10.5)')'YMIN=',YMIN
+      CALL WRIMSG('TARNSP',CMSGNM)
+      WRITE(CMSGNM,FMT='(A,F10.5)')'YMAX=',YMAX
+      CALL WRIMSG('TARNSP',CMSGNM)
+      WRITE(CMSGNM,FMT='(A,F10.5)')'ZMIN=',ZMIN
+      CALL WRIMSG('TARNSP',CMSGNM)
+      WRITE(CMSGNM,FMT='(A,F10.5)')'ZMAX=',ZMAX
+      CALL WRIMSG('TARNSP',CMSGNM)
       SCALE=DIAMX/(XMAX-XMIN)
 
 ! Now determine min,max values of I,J,K:
 
-      LMX1=NINT(SCALE*XMIN/DX(1)-0.01_WP)
-      LMX2=NINT(SCALE*XMAX/DX(1)+0.01_WP)
-      LMY1=NINT(SCALE*YMIN/DX(2)-0.01_WP)
-      LMY2=NINT(SCALE*YMAX/DX(2)+0.01_WP)
-      LMZ1=NINT(SCALE*ZMIN/DX(3)-0.01_WP)
-      LMZ2=NINT(SCALE*ZMAX/DX(3)+0.01_WP)
+      LMX1=NINT(SCALE*XMIN/DX(1)-0.0001_WP)
+      LMX2=NINT(SCALE*XMAX/DX(1)+0.0001_WP)
+      LMY1=NINT(SCALE*YMIN/DX(2)-0.0001_WP)
+      LMY2=NINT(SCALE*YMAX/DX(2)+0.0001_WP)
+      LMZ1=NINT(SCALE*ZMIN/DX(3)-0.0001_WP)
+      LMZ2=NINT(SCALE*ZMAX/DX(3)+0.0001_WP)
 
       DO JA=1,NSPH
          AS2(JA)=(SCALE*AS(JA))**2
@@ -202,6 +219,7 @@
 ! Determine list of occupied sites
 
       NAT=0
+      IWARN=0
       DO JZ=LMZ1,LMZ2
          Z=REAL(JZ,KIND=WP)*DX(3)
          DO JY=LMY1,LMY2
@@ -211,7 +229,21 @@
                OCC=.FALSE.
                DO JA=1,NSPH
                   R2=(X-XS(JA))**2+(Y-YS(JA))**2+(Z-ZS(JA))**2
-                  IF(R2<AS2(JA))OCC=.TRUE.
+                  IF(R2<AS2(JA))THEN
+                     IF(OCC)THEN
+                        IWARN=IWARN+1
+                        IF(IWARN<=10)THEN
+                           WRITE(CMSGNM,FMT='(A,I6)')'overlap for sphere',JA
+                           CALL WRIMSG('TARNSP',CMSGNM)
+                        ENDIF
+                        IF(IWARN==10)THEN
+                           WRITE(CMSGNM,FMT='(A)')                             &
+                              'IWARN=10: further overlap warnings suppressed...'
+                           CALL WRIMSG('TARNSP',CMSGNM)
+                        ENDIF
+                     ENDIF
+                     OCC=.TRUE.
+                  ENDIF
                ENDDO
                IF(OCC)THEN
 

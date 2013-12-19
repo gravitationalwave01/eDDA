@@ -222,26 +222,25 @@
 ! If quantity ERRSCAL is set to |b| elsewhere, then NORMRES/ERRSCAL
 ! is a measure of the fractional error in the solution vector x.
 
-      ITERN = ITNO
-      NORMERR = NORMRES/ERRSCAL
-      IF (ITNO<=2) THEN
-        ERRMIN = NORMERR
-        ITNOL = ITNO
-        WRITE (IDVOUT2,FMT=9000) ITNO, NORMERR
+      ITERN=ITERN+1
+      NORMERR=NORMRES/ERRSCAL
+      IF(ITERN<=2)THEN
+         ERRMIN=NORMERR
+         ITNOL=ITERN
+         WRITE (IDVOUT2,FMT=9000) ITERN, NORMERR
       ELSE
-        IF (NORMERR<ERRMIN) THEN
-          RATE = LOG(ERRMIN/NORMERR)/(ITNO-ITNOL)
-          ERRMIN = NORMERR
-          ITNOL = ITNO
-          WRITE (IDVOUT2,FMT=9001) ITNO, NORMERR, ERRMIN, RATE
-        ELSE
-          WRITE (IDVOUT2,FMT=9000) ITNO, NORMERR
-        END IF
-      END IF
-!*** btd 98.12.07 experiment
+         IF(NORMERR<ERRMIN)THEN
+            RATE=LOG(ERRMIN/NORMERR)/(ITERN-ITNOL)
+            ERRMIN=NORMERR
+            ITNOL=ITERN
+            WRITE(IDVOUT2,FMT=9001)ITERN,NORMERR,ERRMIN,RATE
+         ELSE
+            WRITE(IDVOUT2,FMT=9000)ITERN,NORMERR
+         ENDIF
+      ENDIF
       RETURN
-9000  FORMAT (1X,'iter= ',I4,' frac.err= ',0P,F11.7)
-9001  FORMAT (1X,'iter= ',I4,' frac.err= ',0P,F11.7,' min.err=',0P,F11.7, &
+9000  FORMAT(1X,'iter= ',I4,' frac.err= ',0P,F11.7)
+9001  FORMAT(1X,'iter= ',I4,' frac.err= ',0P,F11.7,' min.err=',0P,F11.7, &
         ' rate=',0P,F8.6)
     END SUBROUTINE PROGRESS
 

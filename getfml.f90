@@ -1,24 +1,34 @@
-      SUBROUTINE GETFML(AKR,AK3,AKSR,BETADF,PHIDF,THETADF,DX,X0,CALPHA,  &
-                        CMDSOL,CMDFFT,CMDTRQ,CSHAPE,CXADIA,CXAOFF,       &
-                        CXALPH,CXALOF,CXALOS,CXE,CXE01R,CXE02R,          &
-                        CXEPS,CXF11,CXF12,CXF21,CXF22,CXRLOC,CXPOL,CXSC, &
-                        CXSCR1,CXZC,CXZW,EM1R,EM2R,ETASCA,GAMMA,IBETH,   &
-                        IBETH1,ICOMP,IDVOUT,INIT,IOCC,IORTH,IPBC,IPHI,   &
-                        IPHI1,ITASK,IXYZ0,ITNUM,JPBC,MXITER,LACE,LAXI,   &
-                        LCLM,LGI,LPI,LQI,LSC0,MXCOMP,MXCXSC,MXN3,MXNAT,  &
-                        MXNX,MXNY,MXNZ,MXPBC,MXPHI,MXSCA,MYID,NAT,NAT0,  &
-                        NAT3,NAVG,NCOMP,NSCAT,NX,NY,NZ,PHI,PIA2,QABS,    &
-                        QBKSCA,QEXT,QPHA,QSCA,QSCAG,QSCAG2,QTRQAB,       &
-                        QTRQSC,SCRRS1,SCRRS2,SHPAR,TOL,TIMERS,MXTIMERS,  &
-                        NTIMERS,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,IWRPOL,c, &
-                        h_bar,h_bar2,velocity,e_charge,DielectricConst)
-                        !Arguments AEFFA and after added by NWB 3/8/12
+      SUBROUTINE GETFML(AK_TF,AK3,AKS_TF,BETADF,PHIDF,THETADF,DX,X0,CALPHA,   &
+                        CMDSOL,CMDFFT,CMDTRQ,CSHAPE,CXADIA,CXAOFF,CXALPH,     &
+                        CXALOF,CXE_TF,CXE01_TF,CXE02_TF,CXEPS,CXF11,CXF12,    &
+                        CXF21,CXF22,CXRLOC,CXPOL_TF,CXSC,CXSCR1,CXZC,CXZW,    &
+                        EM1_TF,EM2_TF,ETASCA,GAMMA,IBETH,IBETH1,ICOMP,IDVOUT, &
+                        INIT,IOCC,IORTH,IPBC,IPHI,IPHI1,ITASK,IXYZ0,ITNUM,    &
+                        JPBC,MXITER,LACE,LAXI,LCLM,LGI,LPI,LQI,LSC0,MXCOMP,   &
+                        MXCXSC,MXN3,MXNAT,MXNX,MXNY,MXNZ,MXPBC,MXPHI,MXSCA,   &
+                        MYID,NAT,NAT0,NAT3,NAVG,NCOMP,NSCAT,NX,NY,NZ,PHI,     &
+                        PIA2,QABS,QBKSCA,QEXT,QPHA,QSCA,QSCAG,QSCAG2,QTRQAB,  &
+                        QTRQSC,SCRRS1,SCRRS2,SHPAR,TOL,TIMERS,MXTIMERS,       &
+                        NTIMERS,NLAR,AEFFA,WAVEA,MXRAD,MXWAV,CENTER, &
+                        IWRPOL,c,h_bar,h_bar2,velocity,e_charge,    &
+                        DielectricConst,XLR,YLR,ZLR,RM)
+                        !Arguments AEFFA and after added SMC 03.05.13 following NWB 3/8/12
 
-!----------------------------- v2 ----------------------------------------
+!----------------------------- v6 ----------------------------------------
+
+! v6: flatau added new cg hooks and call to sbigcg90ver2
+! v4: flatau added mayvi2 graphics interface
 
       USE DDPRECISION,ONLY: WP
       USE DDCOMMON_9,ONLY: ERRSCAL,IDVOUT2,ITERMX,ITERN
+! v6 flatau added 
+      USE CGMODULE
       IMPLICIT NONE
+! v6 flatau added
+      TYPE(CGSTRUCT) CG
+
+! v4: flatau added cxeinc
+!      complex(wp), allocatable, dimension(:):: cxeinc
 
 ! Arguments:
 
@@ -27,10 +37,10 @@
       INTEGER :: IBETH,IBETH1,IDVOUT,INIT,IORTH,IPBC,IPHI,IPHI1,ITASK, &
          JPBC,LACE,LAXI,LCLM,LGI,LPI,LSC0,LQI,MXCOMP,MXCXSC,MXN3,      &
          MXNAT,MXNX,MXNY,MXNZ,MXPBC,MXPHI,MXSCA,MXTIMERS,MYID,NAT,     &
-         NAT0,NAT3,NAVG,NCOMP,NSCAT,NTIMERS,NX,NY,NZ,MXRAD,MXWAV, JJ
-         !MXRAD, MXWAV, JJ added by NWB 3/8/12
+         NAT0,NAT3,NAVG,NCOMP,NLAR,NSCAT,NTIMERS,NX,NY,NZ,MXRAD,MXWAV, JJ
+         !MXRAD, MXWAV, JJ added by SMC 03.05.13 following NWB 3/8/12
 
-      INTEGER :: MXITER,IWRPOL !IWRPOL added by NWB 7/12/12
+      INTEGER :: MXITER,IWRPOL !IWRPOL added by SMC 03.05.13 following NWB 7/12/12
       INTEGER :: & 
          ITNUM(2)
 
@@ -44,12 +54,12 @@
       REAL(WP) :: AK3,ETASCA,GAMMA,PIA2,TOL,TOLR
 
       REAL(WP) ::          &
-         AKR(3),           &
-         AKSR(3,MXSCA),    &
+         AK_TF(3),         &
+         AKS_TF(3,MXSCA),  &
          BETADF(MXNAT),    &
          DX(3),            &
-         EM1R(3,MXSCA),    &
-         EM2R(3,MXSCA),    &
+         EM1_TF(3,MXSCA),  &
+         EM2_TF(3,MXSCA),  &
          PHI(MXPHI),       &
          PHIDF(MXNAT),     &
          QABS(2),          &
@@ -75,24 +85,29 @@
          h_bar2,           &
          velocity,         &
          e_charge,         &
-         DielectricConst   !AEFFA and after by NWB 3/8/12
+         DielectricConst,  &
+         XLR(3),           &
+         YLR(3),           &
+         ZLR(3),           &
+         RM(3,3)
+!AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
+!XLR,YLR, ZLR added by SMC 15.5.13
 
       COMPLEX(WP) ::                    &
          CXADIA(MXN3),                  &
          CXALPH(MXN3),                  &
          CXALOF(MXN3),                  &
          CXAOFF(MXN3),                  &
-         CXALOS(NAT,3),                 &
-         CXE(MXN3),                     &
-         CXE01R(3),                     &
-         CXE02R(3),                     &
+         CXE_TF(MXN3),                  &
+         CXE01_TF(3),                   &
+         CXE02_TF(3),                   &
          CXEPS(MXCOMP),                 &
          CXF11(MXSCA),                  &
          CXF12(MXSCA),                  &
          CXF21(MXSCA),                  &
          CXF22(MXSCA),                  &
          CXRLOC(MXCOMP+1,3,3),          &
-         CXPOL(MXN3),                   &
+         CXPOL_TF(MXN3),                &
          CXSC(MXCXSC),                  &
          CXSCR1(MXN3),                  &
          CXZC(MXNX+1+MXPBC*(MXNX-1),    &
@@ -104,17 +119,24 @@
 
 ! Local variables
 
-      COMPLEX(WP) :: &
-         CXE0R(3)
+      LOGICAL NONZERO_X
 
-      INTEGER :: I,ITER,J,JO,MXITER2,NAT03
-      INTEGER :: NO_CG_RESTART, NO_CG_ITER
+      COMPLEX(WP) :: CXA,CXB
+
+      COMPLEX(WP) ::   &
+         CXE0_TF(3),   &
+         CXE01_TF1(3), &
+         CXE02_TF1(3)
+
+      INTEGER :: I,ITER,J,JO,JX,JY,JZ,MXITER2,MXMATVEC,MULTIPLICATIONS,NAT03
+      INTEGER :: NO_CG_RESTART,NO_CG_ITER
 
       INTEGER :: &
          IPAR(13)
 
-      REAL(WP) :: CABS,CBKSCA,CEXT,CPHA,CSCA,CSCAG2,COSPHI,DTIME, &
-         E02,FALB,SINPHI
+      CHARACTER :: CMSGNM*70
+
+      REAL(WP) :: CABS,CBKSCA,CEXT,CPHA,CSCA,CSCAG2,DTIME,E02,FALB
 
       REAL(WP) ::   &
          CSCAG(3),  &
@@ -122,7 +144,7 @@
          CTRQSC(3), &
          SPAR(6)
 
-      SAVE E02
+      SAVE CXE01_TF1,CXE02_TF1,E02
 
       EXTERNAL CMATVEC,DIAGL,DUMMY,MATVEC,PCSUM,PRECOND,PROGRESS,PSCNRM2
 
@@ -134,9 +156,9 @@
 !     directions.
 
 ! Given:
-!       AKR(1-3)=(k_x,k_y,k_z)*d for incident wave [in Target Frame]
+!       AK_TF(1-3)=(k_x,k_y,k_z)*d for incident wave [in Target Frame]
 !       AK3     =(kd)**3
-!       AKSR(1-3,1-NSCAT)=(k_x,k_y,k_z)*d for NSCAT scattering direction
+!       AKS_TF(1-3,1-NSCAT)=(k_x,k_y,k_z)*d for NSCAT scattering direction
 !       GAMMA = parameter controlling summation over replica dipoles
 !               (smaller alpha -> longer summation)
 !       BETADF(1-NAT)=orientation angle beta (radians) describing
@@ -156,11 +178,11 @@
 !       CMDFFT  =descriptor of method used for FFTs
 !       CMDTRQ  =descriptor of whether or not to compute torques
 !       CSHAPE  =descriptor of target shape, needed by subroutine ALPHA
-!       CXE01R(1-3)=incident polarization state 1 at origin [in TF]
-!       CXE02R(1-3)=incident polarization state 2 at origin [in TF]
+!       CXE01_TF(1-3)=incident polarization state 1 at origin [in TF]
+!       CXE02_TF(1-3)=incident polarization state 2 at origin [in TF]
 !       CXEPS(1-NCOMP)=dielectric constant for compositions 1-NCOMP
-!       EM1R(1-3,1-NSCAT)=unit scat. polarization vectors 1 in TF
-!       EM2R(1-3,1-NSCAT)=unit scat. polarization vectors 2 in TF
+!       EM1_TF(1-3,1-NSCAT)=unit scat. polarization vectors 1 in TF
+!       EM2_TF(1-3,1-NSCAT)=unit scat. polarization vectors 2 in TF
 !       ETASCA  =parameter controlling number of scattering angles used
 !                for calculation of radiation force, <cos>, <cos^2>, and
 !                radiation torque
@@ -231,14 +253,12 @@
 !                         tensor for dipoles 1-NAT (in TF)
 !       CXALOF(1-3,1-NAT)=off-diagonal elements of 3x3 polarizability
 !                         tensor for dipoles 1-NAT
-!       CXALOS(J,1-3)=(alpha_23,alpha_31,alpha_12)/d^3 for dipole J=1-NA
-!                     Off-diagonal polarizability elements
-!       CXE(1-NAT3)=incident x,y,z E field at dipoles 1-NAT (in TF)
+!       CXE_TF(1-NAT3)=incident x,y,z E field at dipoles 1-NAT (in TF)
 !       CXF11(1-NSCAT)=scattering matrix element f_11 for NSCAT dirs
 !       CXF12(1-NSCAT)=                          f_12
 !       CXF21(1-NSCAT)=                          f_21
 !       CXF22(1-NSCAT)=                          f_22
-!       CXPOL(1-NAT3)=x,y,z polarization of dipoles 1-NAT in TF
+!       CXPOL_TF(1-NAT3)=x,y,z polarization of dipoles 1-NAT in TF
 !       QABS(1-2)=Q_abs=C_abs/(PIA2*d**2) for incident pols 1,2
 !       QBKSCA(1-2)=diff.scatt.cross section/(PIA2*d^2) for backscat
 !                   for inc.pols.1,2
@@ -462,37 +482,100 @@
 !                 -> 
 !                 ITERMX=MXITER
 !                 IPAR(10)=MXITER
-! end history
-
-! Copyright (C) 1993,1994,1995,1996,1997,1998,2003,2004,2006,2007,2008
-!               B.T. Draine and P.J. Flatau
+! 10.05.07 (PJF): ver7.2.0: added support for option GPBICG
+! 10.05.08 (BTD): cosmetics
+! 10.05.09 (BTD): add MXITER to argument list so that MXITER can be
+!                 set in ddscat.par
+! 11.08.03 (BTD): removed CXALOS from argument list of GETFML and
+!                 AlPHADIAG: CXALOS never set and never used.
+! 11.08.16 (BTD): disable diagnostic write statements
+!                 remove code for ONEMUL option -- 
+!                 we now do nearfield calculations in subroutine
+!                 NEARFIELD
+! 11.08.31 (BTD): v4
+!                 Reset ITERN=0 for option PETRKP
+! 11.11.18 (BTD): change notation:
+!                 AKR    -> AK_TF
+!                 AKSR   -> AKS_TF
+!                 CXE    -> CXE_TF
+!                 CXE0R  -> CXE0_TF
+!                 CXE01R -> CXE01_TF
+!                 CXE02R -> CXE02_TF
+!                 CXPOL  -> CXPOL_TF
+!                 EM1R   -> EM1_TF
+!                 EM2R   -> EM2_TF
+! 12.12.19 (BTD): v5
+!                 correct problem for circular polarizations
+!                 reported 2012.12.03 by Hui Zhang, 
+!                 Dept. of Physics & Astronomy, Ohio University
+!                 * modify calculation of cxpol for iphi>1
+!                   original algebra worked OK for linear polarization
+!                   but complex coefficients are required for circular
+!                   polarization.
+!                 * eliminate local variables COSPHI,SINPHI
+!                 * add local variables CXE01_TF1(1-3),CXE02_TF1(1-3),
+!                   CXA,CXB
+! 13.01.10 (PJF,BTD): v6
+!                 * add support for new CG package
+!                 * use new version of PETRKP
+!                 * add new option SBIGCG
+!end history
+! Copyright (C) 1993,1994,1995,1996,1997,1998,2003,2004,2006,2007,2008,
+!               2010,2011,2012,2013 B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 ! diagnostic
-!      write(0,*)'getfml ckpt 1, mxnat=',mxnat,' myid=',myid
+!      write(0,*)'getfml_v6 ckpt 0, mxnat=',mxnat,' myid=',myid
+!      write(0,*)'          mxn3=',mxn3
+!      write(0,*)'           nat=',nat
+!      write(0,*)'          nat0=',nat0
+!      write(0,*)'      icomp(1)=',icomp(1),' getfml_v6 ckpt 0'
+!      write(0,*)'  icomp(nat+1)=',icomp(nat+1),' getfml_v6 ckpt 0'
+!      write(0,*)'icomp(2*nat+1)=',icomp(2*nat+1),' getfml_v6 ckpt 0'
+!      write(0,*)'       cxpol_tf before UNREDUCE'
+!      write(0,*)'    j  cxpol_tf(j), j=1 to 3*nat0=',(3*nat0)
+!      do j=1,3*nat0
+!         write(0,fmt='(i6,1p2e11.3)')j,cxpol_tf(j)
+!      enddo
 !***
       IDVOUT2=IDVOUT
       NAT03=3*NAT0
+
+      CALL UNREDUCE(CXPOL_TF,IOCC,MXN3,MXNAT,NAT,NAT0)
 
 !*** Compute fml directly only if IPHI=1
 !    Otherwise use previously computed fml values to obtain new fml
 
       IF(IPHI==1)THEN
 
+! store incident polarization states for use when IPHI > 1
+
+         CXE01_TF1(1)=CXE01_TF(1)
+         CXE01_TF1(2)=CXE01_TF(2)
+         CXE01_TF1(3)=CXE01_TF(3)
+         CXE02_TF1(1)=CXE02_TF(1)
+         CXE02_TF1(2)=CXE02_TF(2)
+         CXE02_TF1(3)=CXE02_TF(3)
+
          DO JO=1,IORTH
             IF(JO==1)THEN
-               CXE0R(1)=CXE01R(1)
-               CXE0R(2)=CXE01R(2)
-               CXE0R(3)=CXE01R(3)
+               CXE0_TF(1)=CXE01_TF(1)
+               CXE0_TF(2)=CXE01_TF(2)
+               CXE0_TF(3)=CXE01_TF(3)
             ELSE
-               CXE0R(1)=CXE02R(1)
-               CXE0R(2)=CXE02R(2)
-               CXE0R(3)=CXE02R(3)
+               CXE0_TF(1)=CXE02_TF(1)
+               CXE0_TF(2)=CXE02_TF(2)
+               CXE0_TF(3)=CXE02_TF(3)
             ENDIF
             E02=0._WP
             DO I=1,3
-               E02=E02+REAL(CXE0R(I)*CONJG(CXE0R(I)))
+               E02=E02+REAL(CXE0_TF(I)*CONJG(CXE0_TF(I)))
             ENDDO
+
+!*** diagnostic
+!            write(0,*)'getfml_v6 ckpt 1'
+!            write(0,fmt='(a,6f10.5)')'  cxe0_tf=',cxe0_tf
+!***
 
 ! Compute quantity used for "normalizing" error:
 
@@ -500,13 +583,20 @@
 
 !*** call EVALE for NAT sites
 !*** diagnostic
-!            write(0,*)'getfml ckpt 2, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 2, myid=',myid
+!            write(0,fmt='(a,1p6e10.2)')'cxe0_tf=',cxe0_tf
 !***
-            CALL EVALE(CXE0R,AKR,DX,X0,IXYZ0,MXNAT,MXN3,NAT,NAT0,NX,NY,NZ,CXE, &
-                 AEFFA,WAVEA,MXRAD,MXWAV,CENTER,c,velocity,e_charge, &
-                 DielectricConst)!Arguments AEFFA and after added by NWB 3/8/12
+            CALL EVALE(CXE0_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT,NAT0,NX,NY,NZ, &
+                       CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
+                       c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
+                       !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
+
 !*** diagnostic
-!            write(0,*)'getfml ckpt 3, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 3, myid=',myid,' jo=',jo
+!            write(0,fmt='(A)')'j     cxe_tf(j)'
+!            do j=1,nat3
+!               write(0,fmt='(i6,2f10.5,a)')j,cxe_tf(j),' getfml_v6 ckpt 3'
+!            enddo
 !***
 
 !***call ALPHA to determine polarizabilities at NAT sites
@@ -514,19 +604,54 @@
 !     polarizations because Lattice Dispersion Relation polarizabilities
 !     depend on direction of propagation and on polarization state)
 
-            CALL ALPHADIAG(AKR,BETADF,PHIDF,THETADF,CALPHA,CXALPH,    &
-                           CXALOF,CXALOS,CXE0R,CXEPS,CXSC,CXSCR1,CXZC,CXZW,  &
-                           DX,IBETH,IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0, &
-                           JO,MYID,MXCOMP,MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX, &
-                           NY,NZ,CXRLOC,CSHAPE,SHPAR)
+!*** diagnostic
+!            write(0,*)'getfml_v6 ckpt 3.5 icomp(1,1-3)=', &
+!                           icomp(1),icomp(1+nat),icomp(1+2*nat)
+!***
+            CALL ALPHADIAG(AK_TF,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF, &
+                           CXE0_TF,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,    &
+                           IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,JO,MYID, &
+                           MXCOMP,MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,  &
+                           CXRLOC,CSHAPE,SHPAR)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 4, myid=',myid
+!            write(0,*)'          nat0=',nat0
+!            write(0,*)'           nat=',nat
+!            write(0,*)'          mxn3=',mxn3
+!            write(0,*)'      nx,ny,nz=',nx,ny,nz
+!            write(0,*)'  j      cxalph(j),'
+!            do j=1,nat3
+!  ************** diff appears here in cxalph(1)
+!               write(0,fmt='(i6,2f10.5,a)')j,cxalph(j),' getfml_v6 ckpt 4'
+!            enddo
 !***
 
 !*** call EVALA to prepare A matrix elements
 
             CALL EVALA(CXADIA,CXAOFF,CXALPH,CXALOF,MXN3,NAT)
+
+!*** diagnostic
+!            write(0,*)'getfml_v6 ckpt 5, myid=',myid
+!            write(0,*)'          mxn3=',mxn3
+!            write(0,*)'           nat=',nat
+!            if(nat<301), write out A matrix
+!            if(nat<301)then
+!               write(0,*)'diagnostic for nat < 301'
+!               write(0,*)'   j ix iy iz ',       &
+!                         ' -------  A_x -------', &
+!                         ' -------  A_y -------', &
+!                         ' -------  A_z -------'
+!               do j=1,nat
+!                  jz=1+(j-1)/(nx*ny)
+!                  jy=1+(j-1-(jz-1)*nx*ny)/nx
+!                  jx=1+(j-1-(jz-1)*nx*ny)-(jy-1)*nx
+!                  write(0,fmt='(i5,3i3,1p6e11.3)')j,jx,jy,jz, &
+!                        cxadia(j),cxadia(j+nat),cxadia(j+2*nat) 
+!               enddo
+!            endif ! endif(nat<301)
+!***
+!***
 
 ! PIMSETPAR sets parameters used by PIM package
 ! ipar(1) LDA         LDA (Leading dimension of a)
@@ -555,10 +680,6 @@
 !      IPAR(13) = if IPAR(12) = -2 or -3, gives the step number in the
 !                 algorithm where a breakdown has occurred.
 
-! Set upper limit on iterations to smaller of 1e4 and NAT0
-
-            MXITER=MIN(10000,NAT03)
-
 ! pass information on max.no. of iterations allowed to DDCOMMON_9
 
 !BTD 080716: changed
@@ -568,36 +689,110 @@
 !-------------------
             SPAR(1)=TOL
 
-! Clean CXE:
+! Clean CXE_TF:
 
-            IF(NAT0<NAT)CALL NULLER(CXE,IOCC,MXNAT,MXN3,NAT)
+            IF(NAT0<NAT)CALL NULLER(CXE_TF,IOCC,MXNAT,MXN3,NAT)
 
-! Iterate to improve CXPOL
+! Iterate to improve CXPOL_TF
 
-!*** diagnostic
-!            write(0,*)'getfml ckpt 4.1, myid=',myid
-!***
+! PJF 2013 adding new CG
+
+            CG%STOPTYPE=R_EPS_B
+            CG%PRECONTYPE=NONE
+            CG%EPSILON_ERR=TOL
+!            CG%PRINT='no'
+            CG%PRINT='print'
+            CG%MAXIT=MXITER
+            CG%IOERR=6
+            CG%BASISDIM=2 ! 'Dimension of orthogonal basis ='
+
             IF(CMDSOL=='PETRKP')THEN
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 6, myid=',myid,' CMDSOL=PETRKP'
+!***
+               ITERN=0
                CALL PIMSSETPAR(IPAR,SPAR,MXN3,NAT3,NAT3,NAT3, &
                                10,-1,-1,1,5,MXITER,TOL)
-               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL,1)
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
                CALL TIMEIT('PETRKP',DTIME)
-               CALL PETR(CXPOL,CXE,CXSC,MXN3,IPAR,SPAR,MATVEC,CMATVEC)
+
+
+! PJF 2013 new implementation of PETRKP (good old horse...)
+
+               CALL PETR90VER2(CXPOL_TF,CXE_TF,NAT3,MATVEC,CXSC,MXCXSC, &
+                               CMATVEC,CG)
+
                CALL TIMEIT('PETRKP',DTIME)
                TIMERS(1)=DTIME
                TIMERS(2)=REAL(IPAR(11),KIND=WP)
 
+            ELSEIF(CMDSOL=='SBICGM')THEN
+
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 6, myid=',myid,' CMDSOL=SBIGCM'
+!***
+
+               ITERN=0
+               CALL PIMSSETPAR(IPAR,SPAR,MXN3,NAT3,NAT3,NAT3, &
+                               10,-1,-1,1,5,MXITER,TOL)
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
+               CALL TIMEIT('SBICGM',DTIME)
+
+! SBICGM : Simplified BI ConjuGate Method
+
+               CALL SBICG90VER2(CXPOL_TF,CXE_TF,NAT3,CXSC,MXCXSC,MATVEC,CG)
+
+! other methods
+!               call cgsqr90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc, matvec,cg)
+!               call cgstab90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec,cg)
+!               call cors90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec,cg)
+
+! Sarkar codes
+! gacg90ver2 doesn't converge...
+!               call gacg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec, &
+!                               cmatvec,cg)
+
+! gbicg90ver2 slow in comparison to cgstab
+!               call gbicg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec, &
+!                                cmatvec, cg)
+
+! gmcg90ver2 slow?, modified conjugate method for unsymmetric complex
+!               call gmcg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec, &
+!                               cmatvec, cg)
+
+! residual minimized, not bad...
+!               call rcg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec, &
+!                              cmatvec, cg)
+
+! a lot of iterations but OK
+!               call sacg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec,cg)
+
+! lots of iterations, modified conjugate gradient method for symmetric case
+!               call smcg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec,cg)
+
+! search directions scaled at each iteration
+!               call srcg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec,cg) 
+
+! the error between the true solution ... minimized
+!               call xcg90ver2(cxpol_tf,cxe_tf,nat3,cxsc,mxcxsc,matvec, &
+!                              cmatvec, cg)
+
+               CALL TIMEIT('SBICGM',DTIME)
+               TIMERS(1)=DTIME
+               TIMERS(2)=REAL(IPAR(11),KIND=WP)
+
+
             ELSEIF(CMDSOL=='PBCGS2')THEN
+
+
 !*** diagnostic
-!               write(0,*)'getfml ckpt 4.2, myid=',myid
+!               write(0,*)'getfml_v6 ckpt 7, myid=',myid,' CMDSOL=PBCGS2'
 !***
-               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL,1)
-!*** diagnostic
-!               write(0,*)'getfml ckpt 4.3, myid=',myid
-!***
+
                CALL TIMEIT('PBCGS2',DTIME)
+
 !*** diagnostic
-!               write(0,*)'getfml ckpt 4.4, myid=',myid
+!               write(0,*)'getfml_v6 ckpt 9, myid=',myid
 !***
 
 !BTD 07.08.15 Use TOLR to input TOL with ZBCG2 (ZBCG2 returns
@@ -605,17 +800,114 @@
 
                TOLR=TOL
 !*** diagnostic
-!               write(0,*)'getfml ckpt 4.5, myid=',myid
+!               write(0,*)'getfml_v6 ckpt 10, myid=',myid
 !***
 
-               CALL ZBCG2(.TRUE.,2,NAT3,CXPOL,.FALSE.,CXE,MATVEC,PRECOND, &
-                           TOLR,MXITER,CXSC,IPAR(12))
+! correspondence with DDSCAT
+! xi - initial guess of cxpol on input; cxpol  on output
+! b  - cxe (right hand side, not changed)
+! xr - A xi (use matvec)  work vector
+! lda -  nat3
+! ndim - nat3 ?
+! nlar  work array dimension >= 12
+! wrk - cxsc NOTE!!! THAT MXCXSC has to be set =12 in main DDSCAT(large!)
+! maxit - itermx ? mxiter?
+! nloop - itern
+! tol -   tolr (input)
+! tole -  achieved relative error
+! ipar(12) - convergence;  ipar(12)=0 converged
+
+               MXMATVEC=4*MXITER
+               NONZERO_X=.FALSE.
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 10.4, myid=',myid
+!               write(0,*)'   cxpol after UNREDUCE'
+!               write(0,*)'  j       cxpol(j), j=1 to mxn3=',mxn3
+!               do j=1,mxn3
+!                  write(0,fmt='(i6,1p2e11.3)')j,cxpol(j)
+!               enddo
+!***
+               CALL ZBCG2(.TRUE.,2,NAT3,CXPOL_TF,NONZERO_X,CXE_TF,MATVEC, &
+                          PRECOND,TOLR,MXMATVEC,CXSC,IPAR(12))
 
 !*** diagnostic
-!               write(0,*)'getfml ckpt 4.6, myid=',myid
+!               write(0,*)'getfml_v6 ckpt 11, myid=',myid
+!               write(0,*)'   returned from zbcg2 with'
+!                  write(0,*)'  j       cxpol(j), j=1 to mxn3=',mxn3
+!                  do j=1,mxn3
+!                     write(0,fmt='(i6,1p2e11.3)')j,cxpol(j)
+!                  enddo
 !***
                CALL TIMEIT('PBCGS2',DTIME)
 							   
+            ELSEIF(CMDSOL=='GPBICG')THEN
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 12, myid=',myid
+!***
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 13, myid=',myid
+!***
+               CALL TIMEIT('PBCGS2',DTIME)
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 14, myid=',myid
+!***
+
+!BTD 07.08.15 Use TOLR to input TOL with ZBCG2 (ZBCG2 returns
+!             actual achieved tolerance in TOLR)
+
+               TOLR=TOL
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 15, myid=',myid
+!***
+
+! correspondence with DDSCAT
+! xi - initial guess of cxpol on input; cxpol  on output
+! b  - cxe (right hand side, not changed)
+! xr - A xi (use matvec)  work vector
+! lda -  nat3
+! ndim - nat3 ?
+! nlar  work array dimension >= 12
+! wrk - cxsc NOTE!!! THAT MXCXSC has to be set =12 in main DDSCAT(large!)
+! maxit - itermx ? mxiter?
+! nloop - itern
+! tol -   tolr (input)
+! tole -  achieved relative error
+! ipar(12) - convergence;  ipar(12)=0 converged
+
+!to do
+!change precision
+!change mat to matrix multiplication
+
+               CALL TANGCG(TOL,MXITER,CXPOL_TF,CXSCR1,CXE_TF,MATVEC,CXSC, &
+                           NAT3,NAT3,NLAR,TOLR,ITERN,MULTIPLICATIONS)
+               ITERN=ITERN+1
+!          PRINT*, ' MULTIPLICATIONS ', MULTIPLICATIONS, TOL, TOLR, ITERN
+!           stop ' flatau2 '
+
+               CALL TIMEIT('GPBICG',DTIME)
+
+            ELSEIF(CMDSOL=='QMRCCG')THEN
+
+!*** diagnostic
+!               write(0,*)'getfml_v6 ckpt 15.5, myid=',myid
+!               write(0,*)'          nlar=',nlar
+!***
+! sanity check
+               IF(NLAR/=10)THEN
+                  WRITE(CMSGNM,FMT='(A,I4,A)')'NLAR=',NLAR, &
+                        ' incompatible with QMRCCG'
+                  CALL ERRMSG('FATAL','GETFML',CMSGNM)
+               ENDIF
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
+               CALL TIMEIT('QMRCCG',DTIME)
+
+               CALL PIMQMRCG(NAT3,MATVEC,CXE_TF,NAT3,NLAR,CXPOL_TF,CXSCR1, &
+                             CXSC,MXITER,ITERN,TOL,TOLR,MULTIPLICATIONS)
+
+               CALL TIMEIT('QMRCCG',DTIME)
+
             ELSEIF(CMDSOL=='PBCGST')THEN
 
 ! CALL PIMSGETPAR(IPAR,SPAR,LDA,N,BLKSZ,LOCLEN,BASISDIM,NPROCS,PROCID, 
@@ -626,27 +918,30 @@
 !flatau I am just hardwiring number of iterations (mxiter is not used anymore)
 !BTD 07.08.12 minor revision
 
-               NO_CG_RESTART=4
+               NO_CG_RESTART=5
                IPAR(12)=-1
 	       NO_CG_ITER=0
 
                CALL PIMSSETPAR(IPAR,SPAR,MXN3,NAT3,NAT3,NAT3, &
                                10,-1,-1,1,2,NO_CG_RESTART,TOL)
 
-               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL,1)
+               CALL CINIT(NAT3,CMPLX(0._WP,0._WP,KIND=WP),CXPOL_TF,1)
                CALL TIMEIT('PBCGST',DTIME)
-!	       DO WHILE(IPAR(12)==-1 .AND. NO_CG_ITER < MX_CG_ITER)
-
+               ITERN=0
                DO ITER=0,(MXITER/NO_CG_RESTART)
+
                   IF(IPAR(12).NE.0)THEN
+                     IF(ITERN>=MXITER)THEN
+                        WRITE(CMSGNM,FMT='(A,I6,A,I6)')'ITERN=',ITERN, &
+                           ' > MXITER=',MXITER
+                        CALL ERRMSG('FATAL','GETFML',CMSGNM)
+                     ENDIF
                      IF(ITER.GT.0)WRITE(0,*)'restart PIMZBICGSTAG: ',ITER
-                     CALL PIMCBICGSTAB(CXPOL,CXE,CXSC,IPAR,SPAR,MATVEC,DIAGL, &
-                                       DUMMY,PCSUM,PSCNRM2,PROGRESS)
+                     CALL PIMCBICGSTAB(CXPOL_TF,CXE_TF,CXSC,IPAR,SPAR,MATVEC, &
+                                       DIAGL,DUMMY,PCSUM,PSCNRM2,PROGRESS)
                   ENDIF
 !                 NO_CG_ITER=NO_CG_ITER+IPAR(11)
                ENDDO
-
-
                CALL TIMEIT('PBCGST',DTIME)
                TIMERS(1)=DTIME
                TIMERS(2)=REAL(NO_CG_ITER,KIND=WP)
@@ -654,20 +949,37 @@
                STOP 'Error -- invalid CMDSOL in getfml'
             ENDIF
 
-!*** Reduce the vectors CXADIA, CXAOFF, CXPOL and CXE to retain only
+!*** diagnostic
+!    if(nat<301), write out unreduced polarization field used by nearfield
+!            if(nat<301)then
+!               write(0,*)'getfml_v6 ckpt 16: diagnostic for nat < 301'
+!               write(0,*)'   j ix iy iz ',       &
+!                         ' -------  P_x -------', &
+!                         ' -------  P_y -------', &
+!                         ' -------  P_z -------'
+!               do j=1,nat
+!                  jz=1+(j-1)/(nx*ny)
+!                  jy=1+(j-1-(jz-1)*nx*ny)/nx
+!                  jx=1+(j-1-(jz-1)*nx*ny)-(jy-1)*nx
+!                  write(0,fmt='(i5,3i3,1p6e11.3)')j,jx,jy,jz, &
+!                        cxpol(j),cxpol(j+nat),cxpol(j+2*nat) 
+!               enddo
+!            endif ! endif(nat<301)
+!***
+
+!*** Reduce the vectors CXADIA, CXAOFF, CXPOL_TF and CXE_TF to retain only
 !    occupied sites, to eliminate unnecessary calculations for
 !    unoccupied sites when calling EVALQ and SCAT
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4.7, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 17, myid=',myid
 !***
             CALL REDUCE(CXADIA,IOCC,MXN3,MXNAT,NAT,NAT0)
             CALL REDUCE(CXAOFF,IOCC,MXN3,MXNAT,NAT,NAT0)
-            CALL REDUCE(CXE,IOCC,MXN3,MXNAT,NAT,NAT0)
-            CALL REDUCE(CXPOL,IOCC,MXN3,MXNAT,NAT,NAT0)
-
+            CALL REDUCE(CXE_TF,IOCC,MXN3,MXNAT,NAT,NAT0)
+            CALL REDUCE(CXPOL_TF,IOCC,MXN3,MXNAT,NAT,NAT0)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4.8, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 18, myid=',myid
 !***
 
 ! ITERN is obtained from DDCOMMON_9
@@ -681,26 +993,43 @@
 
             IF(JO==1)THEN
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4.81, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 19, myid=',myid
 !***
-               CALL COPYIT(CXPOL,CXSCR1,NAT03)
+               CALL COPYIT(CXPOL_TF,CXSCR1,NAT03)
             ELSEIF(JO==2)THEN
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4.82, myid=',myid,' lace=',lace
+!            write(0,*)'getfml_v6 ckpt 20, myid=',myid,' lace=',lace
 !***
-               CALL COPYIT(CXPOL,CXSC(LACE),NAT03)
+               CALL COPYIT(CXPOL_TF,CXSC(LACE),NAT03)
             ENDIF
 !*** diagnostic
-!            write(0,*)'getfml ckpt 4.9, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 21, myid=',myid
 !***
 
-!            CALL EVALQ(CXADIA,CXAOFF,AKR,NAT03,E02,CXE,CXPOL,CABS,CEXT,CPHA, &
-!                       MXN3,1,h_bar,h_bar2) !All parameters h_bar and after added by NWB 7/11/12
-            CALL EVALQ(NAT03,CXE,CXPOL,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
+            !CALL EVALQ(CXADIA,CXAOFF,AK_TF,NAT03,E02,CXE_TF,CXPOL_TF, &
+            !           CABS,CEXT,CPHA,MXN3,1)
+            !EVALQ call modified by SMC 03.05.13 following NWB 7/11/12
+            !CXE and CXPOL translated to CXE_TF and CXPOL_TF for 7.2 implementation by SMC 03.05.13
+            CALL EVALQ(NAT03,CXE_TF,CXPOL_TF,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
 
             QABS(JO)=CABS/PIA2
-            QEXT(JO)=CEXT !NEW CODE NWB 3/8/12
+            QEXT(JO)=CEXT !CEXT/PIA2
+            !Modified by SMC 03.05.13 following NWB 3/8/12
             QPHA(JO)=CPHA/PIA2
+
+!*** diagnostic
+!         write(0,*)'getfml_v6 ckpt 21.5, myid=',myid
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxe_tf(i),cxe_tf(i+nat0), &
+!                                            cxe_tf(i+2*nat0),' cxe_tf'
+!         enddo
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxpol_tf(i),cxpol_tf(i+nat0), &
+!                                            cxpol_tf(i+2*nat0),' cxpol_tf'
+!         enddo
+!         write(0,fmt='(A,1pe10.3)')'qabs(1)=',qabs(1)
+!         write(0,fmt='(A,1pe10.3)')'qext(1)=',qext(1)
+!***
             WRITE(IDVOUT,9010)QABS(JO),QEXT(JO)
 
 !*** first call to timeit:
@@ -712,18 +1041,18 @@
 ! call SCAT to compute CXF11,CXF21
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 5, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 22, myid=',myid
 !            write(0,*)'       NAT0=',nat0
 !            write(0,*)'       X0=',X0
 !***
 
-               CALL SCAT(AKR,AKSR,DX,EM1R,EM2R,E02,ETASCA,CMDTRQ,CBKSCA,CSCA, &
-                         CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE,CXE01R,CXF11,CXF21,   &
-                         CXPOL,CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10),MXN3, &
-                         MXNAT,MXSCA,MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1,  &
-                         SCRRS2,IXYZ0,X0)
+               CALL SCAT(AK_TF,AKS_TF,DX,EM1_TF,EM2_TF,E02,ETASCA,CMDTRQ,   &
+                         CBKSCA,CSCA,CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE_TF,     &
+                         CXE01_TF,CXF11,CXF21,CXPOL_TF,CXZW(1,1),CXZW(1,4), &
+                         CXZW(1,7),CXZW(1,10),MXN3,MXNAT,MXSCA,MYID,JPBC,   &
+                         NAT0,NAT03,NAVG,NSCAT,SCRRS1,SCRRS2,IXYZ0,X0)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 6, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 23, myid=',myid
 !***
 
             ELSEIF(JO==2)THEN
@@ -731,27 +1060,27 @@
 ! call SCAT to compute CXF12,CXF22
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 7, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 24, myid=',myid
 !***
-               CALL SCAT(AKR,AKSR,DX,EM1R,EM2R,E02,ETASCA,CMDTRQ,CBKSCA,CSCA, &
-                         CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE,CXE01R,CXF12,CXF22,   &
-                         CXPOL,CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10),MXN3, &
-                         MXNAT,MXSCA,MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1,  &
-                         SCRRS2,IXYZ0,X0)
+               CALL SCAT(AK_TF,AKS_TF,DX,EM1_TF,EM2_TF,E02,ETASCA,CMDTRQ,   &
+                         CBKSCA,CSCA,CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE_TF,     &
+                         CXE01_TF,CXF12,CXF22,CXPOL_TF,CXZW(1,1),CXZW(1,4), &
+                         CXZW(1,7),CXZW(1,10),MXN3,MXNAT,MXSCA,MYID,JPBC,   &
+                         NAT0,NAT03,NAVG,NSCAT,SCRRS1,SCRRS2,IXYZ0,X0)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 8, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 25, myid=',myid
 !***
 
-            ENDIF
+            ENDIF ! if(JO==1)
 
 !*** second call to timeit
 !*** diagnostic
-!            write(0,*)'getfml ckpt 8.1, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 26, myid=',myid
 !***
 
             CALL TIMEIT(' SCAT ',DTIME)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 8.2, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 27, myid=',myid
 !            write(0,*)'                dtime=',dtime
 !            write(0,*)'                pia2=',pia2
 !            write(0,*)'                jo=',jo,' qext(jo)=',qext(jo)
@@ -795,18 +1124,21 @@
                QSCA(JO)=(QSCA(JO)+(QEXT(JO)-QABS(JO))*FALB)/(1._WP+FALB)
 
 !*** diagnostic
-!               write(0,*)'getfml ckpt 8.21, myid=',myid
+!               write(0,*)'getfml_v6 ckpt 28, myid=',myid
 !***
-!------------------------------------
 
-               ! Shuzhou Li added this on 26 NOV 2008
-               ! Modified by NWB 29 Mar 2012
+!------------------------------------
+               ! SMC 03.05.13 copied this section in following NWB
+                    ! Shuzhou Li added this on 26 NOV 2008
+                    ! Modified by NWB 29 Mar 2012
                IF (IWRPOL == 1) THEN
-                  OPEN(UNIT=1093, FILE='Pol.dat', STATUS='UNKNOWN')
+                  OPEN(UNIT=1093, FILE='realPol.dat', STATUS='UNKNOWN')
+                  OPEN(UNIT=1094, FILE='imagPol.dat', STATUS='UNKNOWN')
                   OPEN(UNIT=1095, FILE='incE.dat', STATUS='UNKNOWN')
                   DO i = 1, 3*NAT0
-                     WRITE(1093, *) REAL(CXPOL(i)), IMAG(CXPOL(i))
-                     WRITE(1095, *) REAL(CXE(i)), IMAG(CXE(i))
+                     WRITE(1093, *) REAL(CXPOL_TF(i)) !Variable names translated by SMC 03.05.13
+                     WRITE(1094, *) IMAG(CXPOL_TF(i))
+                     WRITE(1095, *) CXE_TF(i)
                   ENDDO
                ENDIF
 
@@ -826,7 +1158,7 @@
                ENDIF
 
 !*** diagnostic
-!               write(0,*)'getfml ckpt 8.22, myid=',myid 
+!               write(0,*)'getfml_v6 ckpt 29, myid=',myid 
 !***
             ENDIF !--- end IF(JPBC==0)
          ENDDO !--- end DO J=1,IORTH for IPHI=1
@@ -840,12 +1172,12 @@
 !    CXSCR1     contains polarization vector for IPHI=1 and JO=1
 !    CXSC(LACE) contains polarization vector for IPHI=1 and JO=2
 
-! Incident polarization state 1 = CXE01R
+! Incident polarization state 1 = CXE01_TF
 ! Call EVALE to obtain E at NAT0 occupied lattice sites
 ! first call to timing routine
 
 !*** diagnostic
-!         write(0,*)'getfml ckpt 8.3, myid=',myid
+!         write(0,*)'getfml_v6 ckpt 30, myid=',myid
 !***
 
          CALL TIMEIT(' EVALE',DTIME)
@@ -853,14 +1185,17 @@
 !*** Call EVALE for NAT0 occupied sites
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 9, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 31, myid=',myid
+!            write(0,fmt='(a,1p6e10.2)')'cxe01_tf=',cxe01_tf
 !***
 
-         CALL EVALE(CXE01R,AKR,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ,CXE, &
-                    AEFFA,WAVEA,MXRAD,MXWAV,CENTER,c,velocity,e_charge, &
-                    DielectricConst)!Arguments AEFFA and after added by NWB 3/8/12
+         CALL EVALE(CXE01_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ, &
+                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
+                    c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
+              !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
+
 !*** diagnostic
-!            write(0,*)'getfml ckpt 10, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 32, myid=',myid
 !***
 
 ! second call to timing routine
@@ -874,16 +1209,16 @@
          CALL TIMEIT(' ALPHA',DTIME)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 11, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 33, myid=',myid
 !***
 
-         CALL ALPHADIAG(AKR,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF,      &
-                        CXALOS,CXE01R,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH, &
-                        IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,1,MYID,     &
-                        MXCOMP,MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,     &
+         CALL ALPHADIAG(AK_TF,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF, &
+                        CXE01_TF,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,   &
+                        IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,1,MYID,  &
+                        MXCOMP,MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,  &
                         CXRLOC,CSHAPE,SHPAR)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 12, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 34, myid=',myid
 !***
 
          CALL REDUCE(CXALPH,IOCC,MXN3,MXNAT,NAT,NAT0)
@@ -893,19 +1228,37 @@
 
 !*** Construct polarization for incident pol. state 1
 
-         COSPHI=COS(PHI(IPHI)-PHI(1))
-         SINPHI=SIN(PHI(IPHI)-PHI(1))
-         DO I=1,NAT03
-            CXPOL(I)=COSPHI*CXSCR1(I) - SINPHI*CXSC(LACE+I-1)
+         CXA=0.
+         CXB=0.
+         DO I=1,3
+            CXA=CXA+CONJG(CXE01_TF1(I))*CXE01_TF(I)
+            CXB=CXB+CONJG(CXE02_TF1(I))*CXE01_TF(I)
          ENDDO
+         DO I=1,NAT03
+            CXPOL_TF(I)=CXA*CXSCR1(I)+CXB*CXSC(LACE+I-1)
+         ENDDO
+!*** diagnostic
+!         write(0,*)'getfml_v6 ckpt 34.1'
+!         write(0,fmt='(a,2f8.5,a,2f8.5)')'   cxa=',cxa,' cxb=',cxb
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxscr1(i),cxscr1(i+nat0), &
+!                                            cxscr1(i+2*nat0),' cxscr1'
+!         enddo
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxsc(lace+i-1), &
+!                  cxsc(lace+i-1+nat0),cxsc(lace+i-1+2*nat0),' cxsc'
+!         enddo
+!***
 
 !*** first call to timing routine
 
          CALL TIMEIT(' EVALQ',DTIME)
 
-!         CALL EVALQ(CXADIA,CXAOFF,AKR,NAT03,E02,CXE,CXPOL,CABS,CEXT,CPHA, &
-!                    MXN3,1,h_bar,h_bar2) !All parameters h_bar and after added by NWB 7/11/12
-         CALL EVALQ(NAT03,CXE,CXPOL,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
+         !Modified by SMC 03.05.13 following NWB 7/11/12
+         !Translated variable names to DDSCAT7.2
+         !CALL EVALQ(CXADIA,CXAOFF,AK_TF,NAT03,E02,CXE_TF,CXPOL_TF, &
+         !           CABS,CEXT,CPHA,MXN3,1)
+         CALL EVALQ(NAT03,CXE_TF,CXPOL_TF,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
 
 !*** second call to timing routine
 
@@ -913,29 +1266,45 @@
          TIMERS(7)=DTIME
  
          QABS(1)=CABS/PIA2
+         !Modified by SMC 03.05.13 following NWB 3/8/12
          !QEXT(1)=CEXT/PIA2 !ORIGINAL CODE NWB 3/8/12
          QEXT(1)=CEXT !NEW CODE NWB 3/8/12
          QPHA(1)=CPHA/PIA2
+
+!*** diagnostic
+!         write(0,*)'getfml_v6 ckpt 34.5, myid=',myid
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxe_tf(i),cxe_tf(i+nat0), &
+!                                            cxe_tf(i+2*nat0),' cxe_tf'
+!         enddo
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxpol_tf(i),cxpol_tf(i+nat0), &
+!                                            cxpol_tf(i+2*nat0),' cxpol_tf'
+!         enddo
+!         write(0,fmt='(A,1pe10.3)')'qabs(1)=',qabs(1)
+!         write(0,fmt='(A,1pe10.3)')'qext(1)=',qext(1)
+!***
 
 !*** first call to timing routine
 
          CALL TIMEIT(' SCAT',DTIME)
 
 !*** Now call SCAT to compute CXF11,CXF21
-!    CXPOL has been reduced to NAT03 elements
+!    CXPOL_TF has been reduced to NAT03 elements
 !    first NAT03 elements of IXYZ0 correspond to physical sites
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 13, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 35, myid=',myid
 !***
 
-         CALL SCAT(AKR,AKSR,DX,EM1R,EM2R,E02,ETASCA,CMDTRQ,CBKSCA,CSCA,CSCAG, &
-                   CSCAG2,CTRQAB,CTRQSC,CXE,CXE01R,CXF11,CXF21,CXPOL,         &
-                   CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10),MXN3,MXNAT,MXSCA, &
-                   MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1,SCRRS2,IXYZ0,X0)
+         CALL SCAT(AK_TF,AKS_TF,DX,EM1_TF,EM2_TF,E02,ETASCA,CMDTRQ,CBKSCA,  &
+                   CSCA,CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE_TF,CXE01_TF,CXF11,   &
+                   CXF21,CXPOL_TF,CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10), &
+                   MXN3,MXNAT,MXSCA,MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1, &
+                   SCRRS2,IXYZ0,X0)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 14, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 36, myid=',myid
 !***
 !*** second call to timing routine
 
@@ -967,15 +1336,17 @@
 !    to obtain appropriate E vector for pol. state 2
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 15, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 37, myid=',myid
+!            write(0,fmt='(a,1p6e10.2)')'cxe02_tf=',cxe02_tf
 !***
 
-         CALL EVALE(CXE02R,AKR,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ,CXE, &
-                    AEFFA,WAVEA,MXRAD,MXWAV,CENTER,c,velocity,e_charge, &
-                    DielectricConst)!Arguments AEFFA and after added by NWB 3/8/12
+         CALL EVALE(CXE02_TF,AK_TF,DX,X0,IXYZ0,MXNAT,MXN3,NAT0,NAT0,NX,NY,NZ, &
+                    CXE_TF,AEFFA,WAVEA,MXRAD,MXWAV,CENTER,&
+                    c,velocity,e_charge,DielectricConst,XLR,YLR,ZLR,RM)
+              !Arguments AEFFA and after added by SMC 03.05.13 following NWB 3/8/12
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 16, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 38, myid=',myid
 !***
 !*** second call to timing routine
 
@@ -988,16 +1359,16 @@
          CALL TIMEIT(' ALPHA',DTIME)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 17, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 39, myid=',myid
 !***
-         CALL ALPHADIAG(AKR,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF, &
-                        CXALOS,CXE02R,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,   &
-                    IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,2,MYID,MXCOMP,    &
-                    MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,CXRLOC,CSHAPE,    &
-                    SHPAR)
+         CALL ALPHADIAG(AK_TF,BETADF,PHIDF,THETADF,CALPHA,CXALPH,CXALOF,       &
+                        CXE02_TF,CXEPS,CXSC,CXSCR1,CXZC,CXZW,DX,IBETH,         &
+                        IBETH1,ICOMP,IOCC,IPBC,IPHI,IPHI1,IXYZ0,2,MYID,MXCOMP, &
+                        MXNAT,MXN3,NAT,NAT0,NAT3,NCOMP,NX,NY,NZ,CXRLOC,CSHAPE, &
+                        SHPAR)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 18, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 40, myid=',myid
 !***
          CALL REDUCE(CXALPH,IOCC,MXN3,MXNAT,NAT,NAT0)
          CALL REDUCE(CXALOF,IOCC,MXN3,MXNAT,NAT,NAT0)
@@ -1006,17 +1377,25 @@
 
 !*** Construct incident polarization vector for pol. state 2
 
+         CXA=0.
+         CXB=0.
+         DO I=1,3
+            CXA=CXA+CONJG(CXE01_TF1(I))*CXE02_TF(I)
+            CXB=CXB+CONJG(CXE02_TF1(I))*CXE02_TF(I)
+         ENDDO
          DO I=1,NAT03
-            CXPOL(I)=COSPHI*CXSC(LACE+I-1)+SINPHI*CXSCR1(I)
+            CXPOL_TF(I)=CXA*CXSCR1(I)+CXB*CXSC(LACE+I-1)
          ENDDO
 
 !*** first call to timing routine
 
          CALL TIMEIT(' EVALQ ',DTIME)
 
-!         CALL EVALQ(CXADIA,CXAOFF,AKR,NAT03,E02,CXE,CXPOL,CABS,CEXT,CPHA, &
-!                    MXN3,1,h_bar,h_bar2) !All parameters h_bar and after added by NWB 7/11/12
-         CALL EVALQ(NAT03,CXE,CXPOL,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
+         !Modified by SMC 03.05.13 following NWB 7/11/12
+         !Translated variable names to DDSCAT7.2
+         !CALL EVALQ(CXADIA,CXAOFF,AK_TF,NAT03,E02,CXE_TF,CXPOL_TF, &
+         !           CABS,CEXT,CPHA,MXN3,1)
+         CALL EVALQ(NAT03,CXE_TF,CXPOL_TF,CABS,CEXT,CPHA,1,MXN3,h_bar,h_bar2)
 
 !*** second call to timing routine
 
@@ -1024,28 +1403,43 @@
          TIMERS(11)=DTIME
 
          QABS(2)=CABS/PIA2
-         !QEXT(2)=CEXT/PIA2 !ORIGINAL CODE NWB 3/8/12
-         QEXT(2)=CEXT !NEW CODE NWB 3/8/12
+         !QEXT(2)=CEXT/PIA2
+         QEXT(2)=CEXT !Modified by SMC 03.05.13 following NWB 3/8/12
          QPHA(2)=CPHA/PIA2
 
+!*** diagnostic
+!         write(0,*)'getfml_v6 ckpt 40.5, myid=',myid
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxe_tf(i),cxe_tf(i+nat0), &
+!                                            cxe_tf(i+2*nat0),' cxe_tf'
+!         enddo
+!         do i=1,nat0
+!            write(0,fmt='(i3,1p6e10.2,a)')i,cxpol_tf(i),cxpol_tf(i+nat0), &
+!                                            cxpol_tf(i+2*nat0),' cxpol_tf'
+!         enddo
+!         write(0,fmt='(A,1pe10.3)')'qabs(2)=',qabs(2)
+!         write(0,fmt='(A,1pe10.3)')'qext(2)=',qext(2)
+!***
+
 !*** Call SCAT to compute CXF12,CXF22
-!    CXPOL has NAT03 elements
+!    CXPOL_TF has NAT03 elements
 !    IXYZ0 was initially given NAT03 elements
 
 !*** first call to timing routine:
 
          CALL TIMEIT(' SCAT',DTIME)
 !*** diagnostic
-!            write(0,*)'getfml ckpt 19, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 41, myid=',myid
 !***
 
-         CALL SCAT(AKR,AKSR,DX,EM1R,EM2R,E02,ETASCA,CMDTRQ,CBKSCA,CSCA,CSCAG, &
-                   CSCAG2,CTRQAB,CTRQSC,CXE,CXE01R,CXF12,CXF22,CXPOL,         &
-                   CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10),MXN3,MXNAT,MXSCA, &
-                   MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1,SCRRS2,IXYZ0,X0)
+         CALL SCAT(AK_TF,AKS_TF,DX,EM1_TF,EM2_TF,E02,ETASCA,CMDTRQ,CBKSCA,  &
+                   CSCA,CSCAG,CSCAG2,CTRQAB,CTRQSC,CXE_TF,CXE01_TF,CXF12,   &
+                   CXF22,CXPOL_TF,CXZW(1,1),CXZW(1,4),CXZW(1,7),CXZW(1,10), &
+                   MXN3,MXNAT,MXSCA,MYID,JPBC,NAT0,NAT03,NAVG,NSCAT,SCRRS1, &
+                   SCRRS2,IXYZ0,X0)
 
 !*** diagnostic
-!            write(0,*)'getfml ckpt 20, myid=',myid
+!            write(0,*)'getfml_v6 ckpt 42, myid=',myid
 !***
 !*** second call to timing routine
 
@@ -1067,11 +1461,11 @@
          ENDDO
          QSCAG2(2)=QSCA(2)*CSCAG2/CSCA
 
-      ENDIF
+      ENDIF ! if(IPHI=1) ... elseif(IPHI>1) ... endif
 !*** diagnostic
-!      write(0,*)'getfml ckpt 21, myid=',myid,' returning from getfml'
+!      write(0,*)'getfml_v6 ckpt 43, myid=',myid,' returning from getfml'
 !***
       RETURN
-9010  FORMAT (1X,'Q_abs =',1P,E10.3,' Q_ext= ',E10.3)
-9200  FORMAT (' final true frac.err=',F12.7)
+9010  FORMAT (' >GETFML Q_abs =',1PE11.4,' Q_ext= ',1PE11.4)
+9200  FORMAT (' >GETFML final true frac.err=',F12.7)
     END SUBROUTINE GETFML

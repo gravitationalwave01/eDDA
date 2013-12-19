@@ -32,6 +32,8 @@
 !***********************************************************************
 ! Routine to generate target consisting of rectangular block of
 !        composition 1 resting on top of rectangular block of composition 2
+!        TF origin = center of top surface of block 1
+!                    i.e. 0.5d above the top layer of dipoles
 ! Input:
 !        XV1=(x-length)/d  of block 1    (d=lattice spacing)
 !        YV1=(y-length)/d           1
@@ -70,9 +72,15 @@
 ! 07.09.11 (BTD): changed IXYZ from INTEGER*2 to INTEGER
 ! 07.10.27 (BTD): created starting from TARREC as template
 ! 08.08.30 (BTD): modified format 9020
+! 12.04.02 (BTD): v2
+!                 corrected typo noted by Georges Levi 
+!                 (Universite Paris-Diderot)
+! 12.06.13 (BTD): v3
+!                 corrected two typos noted by Georges Levi
+!                 (Universite Paris-Diderot)
 ! end history
 
-! Copyright (C) 1993,1995,1996,1997,1998,2000,2007
+! Copyright (C) 1993,1995,1996,1997,1998,2000,2007,2008,2012
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
@@ -143,13 +151,15 @@
       ELSE                  ! NY1 is odd
          X0(2)=0.0_WP
          JY1MIN=-(NY1-1)/2
-         JY1MIN=(NY1-1)/2
+         JY1MAX=(NY1-1)/2
          JY2MIN=-INT((NY2-1)/2)
-         JY2MIN=NY2-1-INT((NY2-1)/2)
+         JY2MAX=NY2-1-INT((NY2-1)/2)
       ENDIF
 
       IF(MOD(NZ1,2)==0)THEN ! NZ1 is even
-         X0(3)=0.5_WP
+! 12.04.02 correction
+!         X0(3)=0.5_WP
+         X0(3)=-0.5_WP
          JZ1MIN=1-NZ1/2
          JZ1MAX=NZ1/2
          JZ2MIN=1-INT(NZ2/2)

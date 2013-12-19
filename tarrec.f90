@@ -32,7 +32,7 @@
 !                directions, and d=(dx*dy*dz)**(1/3)=effective lattice
 !                spacing
 !        IOSHP=device number for "target.out" file
-!             =-1 to suppress printing of "target.out"
+!             =-1 to suppress writing of "target.out"
 !        MXNAT=dimensioning information (max number of atoms)
 ! Output:
 !        A1(1-3)=unit vector (1,0,0) defining target axis 1 in Target Fr

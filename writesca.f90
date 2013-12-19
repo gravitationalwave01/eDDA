@@ -1,44 +1,44 @@
-    SUBROUTINE WRITESCA(MXNX,MXNY,MXNZ,NX,NY,NZ,DX,ICOMP,IXYZ0,JPBC,MXNAT,    &
-                        MXN3,MYID,NAT,NAT3,WAVEA,MXWAV,NWAV,AEFFA,MXRAD,NRAD, &
-                        ITHETA,IBETA,IPHI,THETA,MXTHET,NTHETA,BETA,MXBETA,    &
-                        NBETA,PHI,MXPHI,NPHI,NSMELTS,TIMERS,MXTIMERS,NTIMERS, &
-                        CBINFILE,IOBIN,CBINFLAG,IDNC,       &
-                        ILIN10,ILIN12,IORI,IWRKSC,IORTH,IRAD,IWAV,MXCOMP,     &
-                        MXSCA,NAT0,NAVG,ITNUM,MXITER,NCOMP,NORI,NSCAT,CALPHA, &
-                        CDESCR,CFLAVG,CFLSCA,CMDFFT,CMDFRM,CMDTRQ,CSHAPE,     &
-                        CSTAMP,AEFF,AK1,AKR,BETAD,BETMID,BETMXD,ETASCA,PHID,  &
-                        PHIMID,PHIMXD,THETAD,THTMID,THTMXD,TOL,WAVE,XX,A1,A2, &
-                        PHIN,QABS,QABSUM,QBKSCA,QBKSUM,QEXSUM,QEXT,QPHA,      &
-                        QPHSUM,QSCAG,QSCAG2,QSCAT,QSCGSUM,QSCG2SUM,QSCSUM,    &
-                        QTRQAB,QTRQABSUM,QTRQSC,QTRQSCSUM,S1111,S2121,SM,     &
-                        SMIND1,SMIND2,SMORI,THETAN,CX1121,CXE01,CXE01R,CXE02, &
-                        CXE02R,CXEPS,CXRFR,CXF11,CXF21,CXF12,CXF22,PYDDX,     &
-                        PZDDX,XMIN,XMAX,YMIN,YMAX,ZMIN,ZMAX)
+    SUBROUTINE WRITESCA(MXNX,MXNY,MXNZ,NX,NY,NZ,DX,ICOMP,NAMBIENT,IXYZ0,JPBC,  &
+                        MXNAT,MXN3,MYID,NAT,NAT3,WAVEA,MXWAV,NWAV,AEFFA,MXRAD, &
+                        NRAD,ITHETA,IBETA,IPHI,THETA,MXTHET,NTHETA,BETA,       &
+                        MXBETA,NBETA,PHI,MXPHI,NPHI,NSMELTS,TIMERS,MXTIMERS,   &
+                        NTIMERS,CBINFILE,IOBIN,CBINFLAG,IDNC,ILIN10,ILIN12,    &
+                        IORI,IWRKSC,IORTH,IRAD,IWAV,MXCOMP,MXSCA,NAT0,NAVG,    &
+                        ITNUM,MXITER,NCOMP,NORI,NORICHAR,NSCAT,CALPHA,CDESCR,  &
+                        CFLAVG,CFLSCA,CMDFFT,CMDSOL,CMDFRM,CMDTRQ,CSHAPE,      &
+                        CSTAMP,AEFF,AK1,AK_TF,BETAD,BETMID,BETMXD,ETASCA,PHID, &
+                        PHIMID,PHIMXD,THETAD,THTMID,THTMXD,TOL,WAVE,XX,A1_TF,  &
+                        A2_TF,PHIN,QABS,QABSUM,QBKSCA,QBKSUM,QEXSUM,QEXT,QPHA, &
+                        QPHSUM,QSCAG,QSCAG2,QSCAT,QSCGSUM,QSCG2SUM,QSCSUM,     &
+                        QTRQAB,QTRQABSUM,QTRQSC,QTRQSCSUM,S1111,S2121,SM,      &
+                        SMIND1,SMIND2,SMORI,THETAN,CX1121,CXE01_LF,CXE01_TF,   &
+                        CXE02_LF,CXE02_TF,CXEPS,CXRFR,CXF11,CXF21,CXF12,CXF22, &
+                        PYDDX,PZDDX,XMIN,XMAX,YMIN,YMAX,ZMIN,ZMAX)             !
       USE DDPRECISION,ONLY : WP
       IMPLICIT NONE
-!--------------------- writesca_v4 ------------------------------------------
+!--------------------- writesca_v7 ------------------------------------------
 ! Scalar Arguments ..
 
       INTEGER :: IBETA,IDNC,ILIN10,ILIN12,IOBIN,IORI,IORTH,IPHI,IRAD,ITHETA, &
          IWAV,IWRKSC,JPBC,MXBETA,MXCOMP,MXITER,MXN3,MXNAT,MXNX,MXNY,MXNZ,    &
          MXPHI,MXRAD,MXSCA,MXTHET,MXTIMERS,MXWAV,MYID,NAT,NAT0,NAT3,NAVG,    &
-         NBETA,NCOMP,NORI,NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NTIMERS,NWAV,NX,NY,NZ
-      REAL(WP) :: AEFF,AK1,BETAD,BETMID,BETMXD,ETASCA,PHID,PHIMID,PHIMXD,  &
-         PYDDX,PZDDX,THETAD,THTMID,THTMXD,TOL,WAVE,XMAX,XMIN,XX,YMAX,YMIN, &
-         ZMAX,ZMIN
+         NBETA,NCOMP,NORI,NORICHAR,NPHI,NRAD,NSCAT,NSMELTS,NTHETA,NTIMERS,   &
+         NWAV,NX,NY,NZ
+      REAL(WP) :: AEFF,AK1,BETAD,BETMID,BETMXD,ETASCA,NAMBIENT,        &
+         PHID,PHIMID,PHIMXD,PYDDX,PZDDX,THETAD,THTMID,THTMXD,TOL,WAVE, &
+         XMAX,XMIN,XX,YMAX,YMIN,ZMAX,ZMIN
       INTEGER :: ITNUM(2)
-      CHARACTER :: CALPHA*6,CBINFLAG*6,CMDFFT*6,CMDFRM*6,CMDTRQ*6,     &
-         CSHAPE*9,CFLAVG*15,CBINFILE*14,CFLSCA*16,          &
-         CSTAMP*26,CDESCR*67
+      CHARACTER :: CALPHA*6,CBINFLAG*6,CMDFFT*6,CMDFRM*6,CMDSOL*6,CMDTRQ*6, &
+         CSHAPE*9,CFLAVG*12,CBINFILE*14,CFLSCA*19,CSTAMP*26,CDESCR*67
 
 ! Array Arguments ..
 
       COMPLEX(WP) ::    &
          CX1121(MXSCA), &
-         CXE01(3),      &
-         CXE01R(3),     &
-         CXE02(3),      &
-         CXE02R(3),     &
+         CXE01_LF(3),   &
+         CXE01_TF(3),   &
+         CXE02_LF(3),   &
+         CXE02_TF(3),   &
          CXEPS(MXCOMP), &
          CXF11(MXSCA),  &
          CXF12(MXSCA),  &
@@ -46,10 +46,10 @@
          CXF22(MXSCA),  &
          CXRFR(MXCOMP)
       REAL(WP) ::          &
-         A1(3),            &
-         A2(3),            &
+         A1_TF(3),         &
+         A2_TF(3),         &
          AEFFA(MXRAD),     &
-         AKR(3),           &
+         AK_TF(3),         &
          BETA(MXBETA),     &
          DX(3),            &
          PHI(MXPHI),       &
@@ -89,13 +89,15 @@
 
 ! Local variables:
 
-      CHARACTER :: CFLPOL1*17,CFLPOL2*17,CFRAME*12
+      CHARACTER :: CFLE1*18,CFLE2*18,CFLPOL1*20,CFLPOL2*20,CFRAME*12, &
+                   CFLEB1*19,CFLEB2*19
       COMPLEX(WP) :: CXVAR1
-      REAL(WP) :: DAEFF,DEGRAD,DPHYS,MKD,PHIND,PI,PPOL,RVAR1,RVAR2,RVAR3,THETND,ENERGY !Energy added by NWB 7/12/12
+      REAL(WP) :: DAEFF,DEGRAD,DPHYS,MKD,PHIND,PI,PPOL,RVAR1,RVAR2,RVAR3,THETND,ENERGY 
+                  !Energy added by SMC 8.5.13 following NWB 7/12/12
       INTEGER :: I,J,ND
       REAL(WP) ::  &
-         A1L(3),   &
-         A2L(3),   &
+         A1_LF(3), &
+         A2_LF(3), &
          ABSCO(2), &
          G(2),     &
          G2(2),    &
@@ -125,6 +127,9 @@
 !           = 1 for target periodic in y direction in Target Frame
 !           = 2 for target periodic in z direction in Target Frame
 !           = 3 for target periodic in y and z directions in TF
+!
+! Returns: CFLE1,CFLE2 = file names for stored P and E
+!          CFLEB1,CFLEB2 = file names for stored P,E, and B
 
 ! If IORI = 0, then print orientational average
 ! If IORI > 0, print output for specific orientation
@@ -208,15 +213,46 @@
 ! 08.07.17 (BTD) * added A1L,A2L,AK to w000r000k000.sca
 ! 08.08.29 (BTD) * Remove calls to WRITENET -- no longer supported
 !                * Removed CNETFLAG and CNETFILE from argument list.
+! 11.08.16 (BTD) v5 / v7.2.1
+! 11.08.30 (BTD) v5 / v7.2.2
+!                * add NAMBIENT to arg list
+!                * write NAMBIENT to .sca output file
+! 11.11.18 (BTD) * Change notation
+!                  A1     -> A1_TF
+!                  A2     -> A2_TF
+!                  A1L    -> A1_LF
+!                  A2L    -> A2_LF
+!                  AKR    -> AK_TF
+!                  CXE01  -> CXE01_LF
+!                  CXE02  -> CXE02_LF
+!                  CXE01R -> CXE01_TF
+!                  CXE02R -> CXE02_TF
+! 12.01.30 (BTD) * correct typo in WRITE(8,FMT=9020)...
+!                  CMDFFT -> CMDSOL
+!                * add CMDSOL to argument list (here and in DDSCAT.f90)
+! 12.12.23 (BTD) v6 / v7.3.0
+!                * minor changes to formatting -- put space between
+!                  end of number and ")"
+! 13.03.22 (BTD) * changed 
+!                  CFLAVG*15  -> CFLAVG*12
+!                  CFLE1*15   -> CFLE1*18
+!                  CFLE2*15   -> CFLE2*18
+!                  CFLB1*15   -> CFLEB1*19
+!                  CFLB2*15   -> CFLEB2*19
+!                  CFLPOL1*17 -> CFLPOL1*20 
+!                  CFLPOL2*17 -> CFLPOL2*20 
+!                * added NORICHAR to argument list, and to argument list
+!                  in call to NAMER
 ! end history
-
-! Copyright (C) 1996,1998,2003,2004,2005,2006,2007,2008
+! Copyright (C) 1996,1998,2003,2004,2005,2006,2007,2008,2011,2012,2013
 !               B.T. Draine and P.J. Flatau
 ! This code is covered by the GNU General Public License.
 !***********************************************************************
 
 !*** diagnostic
-!      write(0,*)'writesca ckpt 1, myid=',myid
+!      write(0,*)'writesca_v6 ckpt 1, myid=',myid
+!      write(0,*)'   cflsca=',cflsca
+!      write(0,*)'   cflavg=',cflavg
 !***
       PI=4._WP*ATAN(1._WP)
 
@@ -254,19 +290,20 @@
          ENDDO
 
 !*** diagnostic
-!         write(0,*)'writesca ckpt 2, myid=',myid
+!         write(0,*)'writesca_v6 ckpt 2, myid=',myid
 !***
          IF(IWRKSC==1)THEN
 
-            CALL NAMER(IWAV,IRAD,IORI,CFLPOL1,CFLPOL2,CFLSCA,CFLAVG)
+            CALL NAMER(IWAV-1,IRAD-1,IORI-1,NORICHAR,CFLPOL1,CFLPOL2, &
+                       CFLSCA,CFLAVG,CFLE1,CFLE2,CFLEB1,CFLEB2)
 !*** diagnostic
-!            write(0,*)'writesca ckpt 2.1, myid=',myid,' cflsca=',cflsca
+!            write(0,*)'writesca_v6 ckpt 2.1, myid=',myid,' cflsca=',cflsca
 !            write(0,*)'                   itheta=',itheta
 !            write(0,*)'                   iphi=',iphi
 !***
             OPEN(UNIT=8,FILE=CFLSCA,STATUS='UNKNOWN')
 
-            WRITE(8,FMT=9020)CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,NAT0,DAEFF, &
+            WRITE(8,FMT=9020)CSTAMP,CDESCR,CALPHA,CMDSOL,CSHAPE,NAT0,DAEFF, &
                              DPHYS
             WRITE(8,FMT=9030)(XMIN*DPHYS),(XMAX*DPHYS),(YMIN*DPHYS), &
                              (YMAX*DPHYS),(ZMIN*DPHYS),(ZMAX*DPHYS)
@@ -274,31 +311,31 @@
 ! following code to be enabled for noncubic treatment:
 !     &         ,DX
 
-            WRITE(8,FMT=9032)AEFF,WAVE,XX
+            WRITE(8,FMT=9032)AEFF,WAVE,XX,NAMBIENT
             DO J=1,NCOMP
                MKD=DAEFF*SQRT(REAL(CXRFR(J)*CONJG(CXRFR(J))))*XX
                WRITE(8,FMT=9031)CXRFR(J),CXEPS(J),MKD,J
             ENDDO
-            WRITE(8,FMT=9033)TOL,A1,A2
+            WRITE(8,FMT=9033)TOL,A1_TF,A2_TF
             IF(JPBC==0)WRITE(8,FMT=9034)NAVG
-            WRITE(8,FMT=9035)AKR,CXE01R,CXE02R
+            WRITE(8,FMT=9035)AK_TF,CXE01_TF,CXE02_TF
 
-! calculate A1L = target axis A1 in Lab Frame
-!           A2L = target axis A2 in Lab Frame
+! calculate A1_LF = target axis A1 in Lab Frame
+!           A2_LF = target axis A2 in Lab Frame
 
-            A1L(1)=COS(THETA(ITHETA))
-            A1L(2)=SIN(THETA(ITHETA))*COS(PHI(IPHI))
-            A1L(3)=SIN(THETA(ITHETA))*SIN(PHI(IPHI))
-            A2L(1)=-SIN(THETA(ITHETA))*COS(BETA(IBETA))
-            A2L(2)=COS(THETA(ITHETA))*COS(BETA(IBETA))*COS(PHI(IPHI))- &
+            A1_LF(1)=COS(THETA(ITHETA))
+            A1_LF(2)=SIN(THETA(ITHETA))*COS(PHI(IPHI))
+            A1_LF(3)=SIN(THETA(ITHETA))*SIN(PHI(IPHI))
+            A2_LF(1)=-SIN(THETA(ITHETA))*COS(BETA(IBETA))
+            A2_LF(2)=COS(THETA(ITHETA))*COS(BETA(IBETA))*COS(PHI(IPHI))- &
                    SIN(BETA(IBETA))*SIN(PHI(IPHI))
-            A2L(3)=COS(THETA(ITHETA))*COS(BETA(IBETA))*SIN(PHI(IPHI))+ &
+            A2_LF(3)=COS(THETA(ITHETA))*COS(BETA(IBETA))*SIN(PHI(IPHI))+ &
                    SIN(BETA(IBETA))*COS(PHI(IPHI))
-            WRITE(8,FMT=9036)A1L,A2L
+            WRITE(8,FMT=9036)A1_LF,A2_LF
             RVAR1=AK1
             RVAR2=0._WP
             RVAR3=0._WP
-            WRITE(8,FMT=9037)RVAR1,RVAR2,RVAR3,CXE01,CXE02
+            WRITE(8,FMT=9037)RVAR1,RVAR2,RVAR3,CXE01_LF,CXE02_LF
             WRITE(8,FMT=9040)BETAD,THETAD,PHID
             IF(JPBC==0)THEN
                WRITE(8,FMT=9041)ETASCA
@@ -311,7 +348,7 @@
 ! abs.coeff = 1-R-T
 !           = [Qabs*pi/cos(theta_i)]*(d/L_y)*(d/L_z)*(3*N/4*pi)^{2/3}
 
-               ABSCO(1)=PI*(AK1/ABS(AKR(1)))*QABS(1)*                      &
+               ABSCO(1)=PI*(AK1/ABS(AK_TF(1)))*QABS(1)*                    &
                         (0.75_WP*REAL(NAT0)/PI)**(2._WP/3._WP)/(PYDDX*PZDDX)
                WRITE(8,9550)ABSCO(1),ITNUM(1),MXITER
             ENDIF
@@ -377,7 +414,7 @@
                ELSEIF(JPBC==1.OR.JPBC==2)THEN
                   WRITE(8,FMT=9355)
                ELSEIF(JPBC==3)THEN
-                  ABSCO(2)=PI*(AK1/ABS(AKR(1)))*QABS(2)*                      &
+                  ABSCO(2)=PI*(AK1/ABS(AK_TF(1)))*QABS(2)*                    &
                            (0.75_WP*REAL(NAT0)/PI)**(2._WP/3._WP)/(PYDDX*PZDDX)
                   QAV(2)=0.5_WP*(ABSCO(1)+ABSCO(2))
                   WRITE(8,9551)ABSCO(2),ITNUM(2),MXITER,QAV(2)
@@ -488,7 +525,7 @@
                   THETND=DEGRAD*THETAN(ND)
 
 !*** diagnostic
-!                  write(0,*)'writesca ckpt 3, nd=',nd
+!                  write(0,*)'writesca_v6 ckpt 3, nd=',nd
 !                  write(0,*)'            phin(nd),thetan(nd)=',
 !     &                      phin(nd),thetan(nd)
 !***
@@ -496,13 +533,12 @@
 ! Compute PPOL = degree of linear polarization of scattered light
 ! for incident unpolarized light
 !*** diagnostic
-!                  write(0,*)'writesca ckpt 4, sm(nd,1,1)=',sm(nd,1,1)
+!                  write(0,*)'writesca_v6 ckpt 4, sm(nd,1,1)=',sm(nd,1,1)
 !***
                   PPOL=SQRT(SM(2,1,ND)**2+SM(3,1,ND)**2)/SM(1,1,ND)
 
                   WRITE(8,FMT=9090)THETND,PHIND,PPOL,                     &
                                    (SM(SMIND1(J),SMIND2(J),ND),J=1,NSMELTS)
-!***
                ENDDO
             ENDIF
          ENDIF
@@ -515,24 +551,24 @@
 ! (arrive here when called with IORI=0)
 
          OPEN(UNIT=8,FILE=CFLAVG,STATUS='UNKNOWN')
-         WRITE(8,FMT=9020)CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,NAT0,DAEFF, &
+         WRITE(8,FMT=9020)CSTAMP,CDESCR,CALPHA,CMDSOL,CSHAPE,NAT0,DAEFF, &
                           DPHYS
 
 ! following code to be enabled for noncubic treatment:
-!         WRITE(8,FMT=9020)CSTAMP,CDESCR,CMDFFT,CALPHA,CSHAPE,NAT0,DX
+!         WRITE(8,FMT=9020)CSTAMP,CDESCR,CMDSOL,CALPHA,CSHAPE,NAT0,DX
 
-         WRITE(8,FMT=9032)AEFF,WAVE,XX
+         WRITE(8,FMT=9032)AEFF,WAVE,XX,NAMBIENT
          DO J=1,NCOMP
             MKD =(4._WP*PI/(3._WP*NAT0))**(1._WP/3._WP)* &
                  SQRT(REAL(CXRFR(J)*CONJG(CXRFR(J))))*XX
             WRITE(8,FMT=9031)CXRFR(J),CXEPS(J),MKD,J
          ENDDO
-         WRITE(8,FMT=9033)TOL,A1,A2
+         WRITE(8,FMT=9033)TOL,A1_TF,A2_TF
          IF(JPBC==0)WRITE(8,FMT=9034)NAVG
          RVAR1=AK1
          RVAR2=0._WP
          RVAR3=0._WP
-         WRITE(8,FMT=9037)RVAR1,RVAR2,RVAR3,CXE01,CXE02
+         WRITE(8,FMT=9037)RVAR1,RVAR2,RVAR3,CXE01_LF,CXE02_LF
          WRITE(8,FMT=9042)BETMID,BETMXD,NBETA,THTMID,THTMXD,NTHETA, &
                           PHIMID,PHIMXD,NPHI
          IF(JPBC==0)WRITE(8,FMT=9041)ETASCA
@@ -568,9 +604,10 @@
 ! Write orientationally-averaged Q values (except Qpha) to 'qtable':
 
 !*** diagnostic
-!            write(0,*)'writesca ckpt 5, about to open qtable...'
+!            write(0,*)'writesca_v6 ckpt 5, about to open qtable...'
 !***
-            OPEN(UNIT=10,FILE='gammatable',STATUS='OLD') !Name changed to 'gammatable' NWB 7/12/12
+            OPEN(UNIT=10,FILE='gammatable',STATUS='OLD') 
+            !Name changed to 'gammatable' by SMC 8.5.13 following NWB 7/12/12
             DO ND=1,ILIN10
                READ(10,FMT=*)
             ENDDO
@@ -579,8 +616,9 @@
                RVAR2=QSCG2SUM(1)/QSCSUM(1)
             ENDIF
 !*** diagnostic
-!            write(0,*)'writesca ckpt 6, about to write to qtable...'
+!            write(0,*)'writesca_v6 ckpt 6, about to write to qtable...'
 !***
+            !Inserted by SMC 8.5.13 following NWB 7/12/12
             !***Compute energy loss NWB 7/12/12
             ENERGY = 1.2398419301E+0_WP/WAVE
             !Output modified by NWB 7/12/12 to only have wavelength and Gamma (as QEXSUM(1))
@@ -588,14 +626,22 @@
             ILIN10=ILIN10+1
             CLOSE(10)
 
-            !qtable2 edited out by NWB 7/12/12
-!            OPEN(UNIT=12,FILE='qtable2',STATUS='OLD')
-!            DO ND=1,ILIN12
-!               READ(12,FMT=*)
-!            ENDDO
-!            WRITE(12,FMT=9057)AEFF,WAVE,QPHSUM(1)
-!            ILIN12=ILIN12+1
-!            CLOSE(12)
+            !Original Code commented out by SMC 8.5.13 following NWB 7/12/12
+            !IF(JPBC==0)THEN
+            !   WRITE(10,FMT=9056)AEFF,WAVE,QEXSUM(1),QABSUM(1),QSCSUM(1), &
+            !                     RVAR1,RVAR2,QBKSUM(1),NAVG
+            !ELSE
+            !   WRITE(10,FMT=9057)AEFF,WAVE,QEXSUM(1),QABSUM(1),QSCSUM(1)
+            !ENDIF
+            !ILIN10=ILIN10+1
+            !CLOSE(10)
+            !OPEN(UNIT=12,FILE='qtable2',STATUS='OLD')
+            !DO ND=1,ILIN12
+            !   READ(12,FMT=*)
+            !ENDDO
+            !WRITE(12,FMT=9057)AEFF,WAVE,QPHSUM(1)
+            !ILIN12=ILIN12+1
+            !CLOSE(12)
 
          ELSEIF(IORTH==2)THEN
             IF(JPBC==0)THEN
@@ -717,24 +763,24 @@
 
       IF(CBINFLAG/='NOTBIN')THEN
 
-         CALL WRITEBIN(CBINFLAG,CBINFILE,IOBIN,CSTAMP,CDESCR,CMDFFT,CALPHA,   &
-                       CSHAPE,CMDTRQ,MXWAV,MXRAD,MXTHET,MXBETA,MXPHI,MXN3,    &
-                       MXNAT,MXSCA,MXTIMERS,IORTH,NX,NY,NZ,NAT0,NAT,NAT3,     &
-                       NAVG,NSCAT,NCOMP,NORI,NWAV,NRAD,NTHETA,NPHI,NBETA,     &
-                       NTIMERS,MXNX,MXNY,MXNZ,MXCOMP,BETMID,BETMXD,THTMID,    &
-                       THTMXD,PHIMID,PHIMXD,TOL,DX,WAVEA,AEFFA,THETA,BETA,    &
-                       PHI,A1,A2,ICOMP,IXYZ0,IWAV,IRAD,IORI,AEFF,WAVE,XX,AK1, &
-                       BETAD,THETAD,PHID,AKR,CXE01R,CXE02R,CXRFR,CXEPS,QEXT,  &
-                       QABS,QSCAT,G,QBKSCA,QPHA,QAV,QTRQAB,QTRQSC,SM,PHIN,    &
-                       THETAN,TIMERS)
+         CALL WRITEBIN(CBINFLAG,CBINFILE,IOBIN,CSTAMP,CDESCR,CMDFFT,CALPHA,  &
+                       CSHAPE,CMDTRQ,MXWAV,MXRAD,MXTHET,MXBETA,MXPHI,MXN3,   &
+                       MXNAT,MXSCA,MXTIMERS,IORTH,NX,NY,NZ,NAT0,NAT,NAT3,    &
+                       NAVG,NSCAT,NCOMP,NORI,NWAV,NRAD,NTHETA,NPHI,NBETA,    &
+                       NTIMERS,MXNX,MXNY,MXNZ,MXCOMP,BETMID,BETMXD,THTMID,   &
+                       THTMXD,PHIMID,PHIMXD,TOL,DX,WAVEA,AEFFA,THETA,BETA,   &
+                       PHI,A1_TF,A2_TF,ICOMP,IXYZ0,IWAV,IRAD,IORI,AEFF,WAVE, &
+                       XX,AK1,BETAD,THETAD,PHID,AK_TF,CXE01_TF,CXE02_TF,     &
+                       CXRFR,CXEPS,QEXT,QABS,QSCAT,G,QBKSCA,QPHA,QAV,QTRQAB, &
+                       QTRQSC,SM,PHIN,THETAN,TIMERS)
 
       ENDIF
 
       RETURN
 
 9020  FORMAT(' DDSCAT --- ',A,/,' TARGET ---',A,/,' ',A,             &
-         ' --- method of solution ',/,' ',A,                         &
-         ' --- prescription for polarizabilies',/,                   &
+         ' --- DDA method',/,' ',A,                         &
+         ' --- CCG method',/,                   &
          ' ',A,' --- shape ',/,I8,5X,'= NAT0 = number of dipoles',/, &
          F12.8,' = d/aeff for this target [d=dipole spacing]',/,     &
          F12.6,' = d (physical units)')
@@ -754,24 +800,25 @@
          ')  |m|kd=',0P,F8.4,' for subs.',I2)
 9032  FORMAT(                                                          &
          '  AEFF=',F14.6,' =',' effective radius (physical units)',/,  &
-         '  WAVE=',F14.6,' = wavelength (physical units)',/,'K*AEFF=', &
-         F14.6,' = 2*pi*aeff/lambda')
+         '  WAVE=',F14.6,' = wavelength (in vacuo, physical units)',/, &
+         'K*AEFF=',F14.6,' = 2*pi*aeff/lambda',/,                      &
+         'NAMBIENT=',F12.6,' = refractive index of ambient medium')
 9033  FORMAT(                                                       &
          '   TOL=',1P,E10.3,' = error tolerance for CCG method',/,  &
-         0P,'(',F8.5,2F9.5,') = target axis A1 in Target Frame',/,  &
-         '(',F8.5,2F9.5,') = target axis A2 in Target Frame')
+         0P,'(',F8.5,2F9.5,' ) = target axis A1 in Target Frame',/, &
+         '(',F8.5,2F9.5,' ) = target axis A2 in Target Frame')
 9034  FORMAT('  NAVG=',I6,' = (theta,phi) values used in comp. of Qsca,g')
-9035  FORMAT(                                                 &
-         '(',F8.5,2F9.5,') = k vector (latt. units) in TF',/, &
-         3('(',F8.5,',',F8.5,')'),'=inc.pol.vec. 1 in TF',/,  &
-         3('(',F8.5,',',F8.5,')'),'=inc.pol.vec. 2 in TF')
-9036  FORMAT(                                                &
-         '(',F8.5,2F9.5,') = target axis A1 in Lab Frame',/, &
-         '(',F8.5,2F9.5,') = target axis A2 in Lab Frame')
-9037  FORMAT(                                                        &
-         '(',F8.5,2F9.5,') = k vector (latt. units) in Lab Frame',/, &
-         3('(',F8.5,',',F8.5,')'),'=inc.pol.vec. 1 in LF',/,         &
-         3('(',F8.5,',',F8.5,')'),'=inc.pol.vec. 2 in LF')
+9035  FORMAT(                                                  &
+         '(',F8.5,2F9.5,' ) = k vector (latt. units) in TF',/, &
+         3('(',F8.5,',',F8.5,' )'),'=inc.pol.vec. 1 in TF',/,  &
+         3('(',F8.5,',',F8.5,' )'),'=inc.pol.vec. 2 in TF')
+9036  FORMAT(                                                 &
+         '(',F8.5,2F9.5,' ) = target axis A1 in Lab Frame',/, &
+         '(',F8.5,2F9.5,' ) = target axis A2 in Lab Frame')
+9037  FORMAT(                                                         &
+         '(',F8.5,2F9.5,' ) = k vector (latt. units) in Lab Frame',/, &
+         3('(',F8.5,',',F8.5,' )'),'=inc.pol.vec. 1 in LF',/,         &
+         3('(',F8.5,',',F8.5,' )'),'=inc.pol.vec. 2 in LF')
 9040  FORMAT(                                                &
          ' BETA =',F7.3,' = rotation of target around A1',/, &
          ' THETA=',F7.3,' = angle between A1 and k',/,       &
@@ -787,13 +834,13 @@
          ' Results averaged over ',I4,' target orientations',/,  &
          '                   and ',I4,' incident polarizations')
 9050  FORMAT(                                                         &
-         10X,'Qext',7X,'Qabs',7X,'Qsca',6X,'g(1)=<cos>',2X,'<cos^2>', &
-         5X,'Qbk',7X,'Qpha',/,1X,'JO=1: ',1P,3E11.4,E12.4,2E11.4,E12.4)
-9051  FORMAT(10X,'Qext',7X,'Qabs',7X,'Qsca',/,1X,'JO=1: ',1P,3E11.4)
-9054  FORMAT(1X,'JO=2: ',1P,3E11.4,/,1X,'mean: ',3E11.4,/,1X,'Qpol= ',E11.4)
+         10X,'Qext',8X,'Qabs',8X,'Qsca',6X,'g(1)=<cos>',2X,'<cos^2>', &
+         5X,'Qbk',7X,'Qpha',/,1X,'JO=1:',1P,4E12.4,2E11.4,E12.4)
+9051  FORMAT(10X,'Qext',7X,'Qabs',7X,'Qsca',/,1X,'JO=1:',1P,3E12.4)
+9054  FORMAT(1X,'JO=2:',1P,3E12.4,/,1X,'mean:',3E12.4,/,1X,'Qpol= ',E11.4)
 9055  FORMAT(                                                            &
-         1X,'JO=2: ',1P,3E11.4,E12.4,2E11.4,E12.4,/,1X,'mean: ',         &
-         3E11.4,E12.4,2E11.4,E12.4,/,1X,'Qpol= ',E11.4,50X,'dQpha=',E12.4)
+         1X,'JO=2:',1P,3E12.4,E12.4,2E11.4,E12.4,/,1X,'mean:',         &
+         4E12.4,2E11.4,E12.4,/,1X,'Qpol=',E12.4,50X,'dQpha=',E12.4)
 9056  FORMAT(1P,E10.4,4E11.4,E12.4,E11.4,E11.4,I6)
 9057  FORMAT(1P,E10.4,E11.4,3E12.4)
 9060  FORMAT(                                                            &

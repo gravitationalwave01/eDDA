@@ -25,8 +25,8 @@
 !***********************************************************************
 
 ! Routine to construct target consisting of two materials, with outer
-! surface an allipsoid of dimensions AX,AY,AZ,
-! and core/mantle interface a concentric ellipsoid of dimensions BX,BY,B
+! surface an ellipsoid of dimensions AX,AY,AZ,
+! and core/mantle interface a concentric ellipsoid of dimensions BX,BY,BZ
 ! Input:
 !        AX=(x-length)/d of outer ellipsoid  (d=lattice spacing)
 !        AY=(y-length)/d "   "     "
@@ -39,8 +39,8 @@
 !             =-1 to suppress printing of "target.out"
 !        MXNAT=dimensioning information (max number of atoms)
 ! Output:
-!        A1(1-3)=(1,0,0)=unit vector defining target axis 1 in Target Fr
-!        A2(1-3)=(0,1,0)=unit vector defining target axis 2 in Target Fr
+!        A1(1-3)=(1,0,0)=unit vector defining target axis 1 in Target Frame
+!        A2(1-3)=(0,1,0)=unit vector defining target axis 2 in Target Frame
 !        NAT=number of atoms in target
 !        IXYZ(1-NAT,1-3)=x/d,y/d,z/d for atoms of target
 !        ICOMP(1-NAT,1-3)=1 for sites within inner ellipsoid,
